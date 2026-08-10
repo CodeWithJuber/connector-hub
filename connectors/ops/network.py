@@ -25,9 +25,26 @@ class OpsNetworkConnector(BaseConnector):
         self.missing_env = []
         self.security = SecurityPolicy(self.config)
 
+    read_only_actions = frozenset(['ping', 'dns_lookup', 'port_check', 'traceroute', 'http_headers'])
+    mutating_actions = frozenset([])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset([])
+
     def actions(self):
         return ["ping", "dns_lookup", "port_check", "traceroute", "http_headers"]
 
+    def _exec_allowed(self):
+        return self.env("HUB_ALLOW_LOCAL_EXEC") == "1"
+
+    def _gated(self, action):
+        return {
+            "ok": False,
+            "executed": False,
+            "state": "policy_required",
+            "gated": True,
+            "action": action,
+            "note": "system command blocked: set HUB_ALLOW_LOCAL_EXEC=1 to enable",
+        }
     def _authorize_exec(self, action, approval):
         self.security.require_capability(self.name, "local_exec", action, approval, True)
 
@@ -106,7 +123,9 @@ class OpsNetworkConnector(BaseConnector):
             address = self.security.resolve_host(host, 0, socket.SOCK_RAW)[0]
             if not shutil.which("traceroute"):
                 return {
-                    "ok": True,
+                    "ok": False,
+                    "executed": False,
+                    "state": "dependency_required",
                     "host": host,
                     "note": "system 'traceroute' binary not installed",
                     "hops": [],

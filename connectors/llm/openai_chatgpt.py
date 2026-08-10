@@ -28,6 +28,11 @@ class OpenAIConnector(BaseConnector):
     def _headers(self):
         return {"Authorization": f"Bearer {self.env('OPENAI_API_KEY')}"}
 
+    read_only_actions = frozenset(['list_models'])
+    mutating_actions = frozenset(['chat', 'embeddings'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['chat', 'embeddings'])
+
     def actions(self):
         return ["chat", "list_models", "embeddings"]
 

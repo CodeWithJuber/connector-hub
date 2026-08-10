@@ -21,6 +21,11 @@ class WHMCSConnector(BaseConnector):
     required_env = ["WHMCS_URL", "WHMCS_API_IDENTIFIER", "WHMCS_API_SECRET"]
     description = "WHMCS billing: clients, invoices, tickets, products, module actions"
 
+    read_only_actions = frozenset(['get_clients', 'get_client', 'get_invoices', 'get_tickets', 'get_products'])
+    mutating_actions = frozenset(['reply_ticket', 'add_client', 'create_invoice', 'module_action'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['reply_ticket', 'add_client', 'create_invoice', 'module_action'])
+
     def actions(self):
         return [
             "get_clients",

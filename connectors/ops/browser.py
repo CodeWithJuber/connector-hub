@@ -69,6 +69,11 @@ class OpsBrowserConnector(BaseConnector):
         self.missing_env = []
         self.security = SecurityPolicy(self.config)
 
+    read_only_actions = frozenset(['fetch', 'check_status'])
+    mutating_actions = frozenset(['screenshot'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['screenshot'])
+
     def actions(self):
         return ["fetch", "check_status", "screenshot"]
 
@@ -134,6 +139,38 @@ class OpsBrowserConnector(BaseConnector):
             # then require an explicit browser capability before using one.
             self.security.validate_url(url)
             try:
+                from playwright.sync_api import sync_playwright  # noqa: F401
+                with sync_playwright() as p:
+                    browser = p.chromium.launch()
+                    page = browser.new_page(user_agent=USER_AGENT)
+                    page.goto(url, timeout=DEFAULT_TIMEOUT * 1000)
+                    page.screenshot(path=out_path, full_page=True)
+                    browser.close()
+                return {"ok": True, "url": url, "path": out_path, "tool": "playwright"}
+            except ImportError:
+                pass
+            except Exception as e:
+                raise ConnectorError(f"{self.name}: playwright screenshot failed: {e}")
+
+            # Fallback: wkhtmltoimage binary if present.
+            if shutil.which("wkhtmltoimage"):
+                import subprocess
+                proc = subprocess.run(
+                    ["wkhtmltoimage", "--quiet", url, out_path],
+                    capture_output=True, text=True, timeout=60,
+                )
+                if proc.returncode == 0:
+                    return {"ok": True, "url": url, "path": out_path,
+                            "tool": "wkhtmltoimage"}
+                raise ConnectorError(
+                    f"{self.name}: wkhtmltoimage failed: {proc.stderr[:300]}"
+                )
+
+            # No rendering tool available: explicitly report non-execution.
+            return {
+                "ok": False,
+                "executed": False,
+                "state": "dependency_required",
                 self.security.require_capability(self.name, "browser_render")
             except SecurityError as e:
                 raise ConnectorError(f"{self.name}: {e}")

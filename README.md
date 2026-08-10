@@ -1,5 +1,6 @@
 # Omni Connector Hub
 
+One channel for everything: AI providers, email (multi-Gmail OAuth), hosting panels, VPS clouds, chat, GitHub, and server ops — behind one interface with explicit execution states and fail-closed safety policies.
 ## Production request pipeline
 
 Python 3.11–3.14 is supported. Every CLI, Python, and MCP action is validated by
@@ -75,7 +76,27 @@ python3 -m hub.gateway status gmail
 python3 -m hub.gateway call hetzner list_servers
 ```
 
-Anything without credentials answers in **mock mode** (dry-run echo) — the hub is fully usable for testing workflows before secrets exist.
+Missing credentials return `ok: false`, `executed: false`, `state: "configuration_required"`, and a typed `error`. Request parameters are never echoed. This is distinct from an explicit dry run and cannot be mistaken for successful execution.
+
+## Execution contract and dry runs
+
+`hub_status` (or `python3 -m hub.gateway status <channel>`) reports every action's
+`classification`, `dry_run_capable`, and `confirmation_required` values.
+
+- A real success has `ok: true`, `executed: true`, and `state: "succeeded"`.
+- Add `"dry_run": true` to preview a supported mutating/destructive action. The
+  result has `ok: false`, `executed: false`, and `state: "dry_run"`; it contains
+  no request-parameter echo.
+- Missing credentials have `state: "configuration_required"`. A rejected or
+  failed provider call has `state: "upstream_failure"` and a typed error.
+- Destructive actions fail with `state: "confirmation_required"` unless passed
+  `"confirmation_token": "CONFIRM:<channel>:<action>"` or
+  `"policy_approved": true` from a trusted policy engine.
+
+```bash
+python3 -m hub.gateway call hetzner create_server '{"dry_run":true,"name":"example","server_type":"cx22","image":"ubuntu-24.04"}'
+python3 -m hub.gateway call hetzner delete_server '{"id":123,"confirmation_token":"CONFIRM:hetzner:delete_server"}'
+```
 
 ## Gmail OAuth (multiple accounts)
 
@@ -90,6 +111,10 @@ python3 -m hub.gateway call gmail send '{"label":"main","to":"x@y.com","subject"
 
 ## Security model
 
+- Secrets live only in `.env` (git-ignored). The base response contract never
+  echoes parameters because message bodies and customer data can be sensitive
+  even when their field names do not look like secrets.
+- `ops_ssh` and system-level `ops_network` commands do **nothing real** until `HUB_ALLOW_LOCAL_EXEC=1`.
 - Secrets live only in `.env` (git-ignored). Logs redact anything matching KEY/TOKEN/SECRET/PASS.
 - Ops commands require deployment capabilities, allowlisted actions, destructive-action enablement, and an auditable approval identifier.
 - OAuth refresh tokens are minted only by the script you run yourself.

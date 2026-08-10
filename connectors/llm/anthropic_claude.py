@@ -39,6 +39,11 @@ class AnthropicConnector(BaseConnector):
             "anthropic-version": ANTHROPIC_VERSION,
         }
 
+    read_only_actions = frozenset(['list_models'])
+    mutating_actions = frozenset(['chat'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['chat'])
+
     def actions(self):
         return ["chat", "list_models"]
 

@@ -14,6 +14,11 @@ class LinodeConnector(BaseConnector):
     required_env = ["LINODE_API_TOKEN"]
     description = "Linode: instances, regions, types"
 
+    read_only_actions = frozenset(['list_linodes', 'get_linode', 'list_regions', 'list_types'])
+    mutating_actions = frozenset(['create_linode', 'boot', 'reboot'])
+    destructive_actions = frozenset(['shutdown', 'delete_linode'])
+    dry_run_actions = frozenset(['create_linode', 'boot', 'reboot', 'shutdown', 'delete_linode'])
+
     def actions(self):
         return [
             "list_linodes", "get_linode", "create_linode", "boot",

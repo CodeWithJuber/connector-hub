@@ -31,6 +31,11 @@ class ImapSmtpConnector(BaseConnector):
     required_env = ["EMAIL_ACCOUNTS"]
     description = "Generic multi-account email via IMAP (read/search) and SMTP_SSL (send)."
 
+    read_only_actions = frozenset(['list_accounts', 'check_inbox', 'search'])
+    mutating_actions = frozenset(['send_email'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['send_email'])
+
     def actions(self):
         return ["list_accounts", "check_inbox", "send_email", "search"]
 
