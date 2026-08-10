@@ -1,0 +1,50 @@
+name: '🐛 Bug'
+description: Something is broken or behaving wrong.
+labels: ['type:bug']
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What's wrong
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Where (env / route / user)
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority / severity
+      options: ['p0 — critical (prod down, data loss, security)', 'p1 — high', 'p2 — medium', 'p3 — low']
+      default: 2
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area # ← customize options to your domains
+      multiple: true
+      options: [backend, frontend, api, infra, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Logs / screenshots / sensitive-area note

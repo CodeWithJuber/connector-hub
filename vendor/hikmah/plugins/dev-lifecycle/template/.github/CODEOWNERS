@@ -1,0 +1,14 @@
+# Code ownership → auto-requests review on matching paths.
+# Replace @OWNER with your GitHub handle/team, and list sensitive paths so
+# they always pull in a human (mirror dev-workflow.yml `sensitivePaths`).
+
+* @OWNER
+
+# --- Sensitive areas (always human-reviewed) — customize to your repo ---
+# /convex/schema.ts        @OWNER
+# /convex/authz/           @OWNER
+# /convex/migrations/      @OWNER
+
+# --- Workflow / process config (change deliberately) ---
+/.github/                  @OWNER
+/.claude/                  @OWNER

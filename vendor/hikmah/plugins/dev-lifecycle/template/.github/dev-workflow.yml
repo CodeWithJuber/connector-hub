@@ -1,0 +1,62 @@
+# Dev Lifecycle — per-project configuration
+#
+# Single source of truth for the lifecycle commands (/intake /triage /start
+# /preflight /open-pr — from the `dev-lifecycle` plugin) and the bootstrap
+# script. EDIT the placeholders below for your repo, then run
+# `scripts/bootstrap-project.sh`.
+#
+# Docs: CONTRIBUTING.md
+
+schemaVersion: 1
+
+repo:
+  owner: __OWNER__ # e.g. hikmahlabs   ← EDIT
+  name: __REPO__ # e.g. my-app       ← EDIT
+  defaultBranch: main
+
+# The GitHub Projects v2 board this repo's work lives on.
+# `number` is filled in by scripts/bootstrap-project.sh. Leave 0 until then.
+project:
+  title: '__REPO__ Delivery' # ← EDIT (display title)
+  number: 0
+
+# Branch / Conductor-workspace naming convention (documented, not auto-applied).
+branchConvention: '{githubUser}/{type}-{issue}-{slug}'
+
+commitConvention: conventional # feat:/fix:/chore:/refactor:/docs:
+mergeStrategy: squash
+
+# Classification taxonomy. Mirror it in .github/labels.yml + the issue forms.
+# `area` is the one you'll most want to customize per project.
+taxonomy:
+  type: [feature, bug, chore, refactor, docs, spike]
+  priority: [p0, p1, p2, p3] # p0=critical … p3=low
+  effort: [XS, S, M, L, XL]
+  area: [backend, frontend, api, infra, docs] # ← EDIT to your domains
+  stage: [Backlog, Ready, In Progress, In Review, Needs Human Review, Done]
+
+# A PR is auto-flagged `needs-human-review` when its diff touches any of these
+# globs. Tune to your sensitive surfaces (auth, payments, schema, migrations…).
+sensitivePaths:
+  - 'convex/schema.ts'
+  - 'convex/authz/**'
+  - 'convex/migrations/**'
+  - '**/auth/**'
+  - '**/*payment*'
+  - '**/*stripe*'
+  - 'src/middleware.ts'
+
+# Review: local-only, single command. Point this at your project's review
+# command (the template ships a generic /review in .claude/commands/).
+review:
+  command: 'review'
+
+# Deploy. Default assumes merge-to-main auto-deploys (e.g. Vercel deploys the
+# frontend + Convex). Adjust if your pipeline differs.
+deploy:
+  onMergeToMain: vercel-auto
+
+# Off-by-default extras (see CONTRIBUTING "Optional automation").
+releaseAutomation: false
+notifications: github
+nightlyTriage: false

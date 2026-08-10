@@ -1,0 +1,11 @@
+{
+  "name": "dev-lifecycle",
+  "version": "1.0.0",
+  "description": "End-to-end development lifecycle for any repo — idea → classified GitHub issue on a Projects board → worktree → PR → squash-merge. Run /adopt once to lay down the GitHub scaffolding (issue forms, PR template, labels, CI, board bootstrap) into a new or existing repo, then drive features with /intake, /triage, /start, /preflight, /open-pr (config-driven via .github/dev-workflow.yml). Auto-flags sensitive diffs for human review; reviews stay local; merging auto-deploys. Self-contained — no companion repo needed.",
+  "author": {
+    "name": "Muhammad Lo",
+    "email": "hiqmalabs@gmail.com"
+  },
+  "homepage": "https://github.com/hikmahlabs/plugins",
+  "license": "MIT"
+}

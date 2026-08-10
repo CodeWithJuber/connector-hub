@@ -1,0 +1,11 @@
+{
+  "enabled_capabilities": [
+    "instructions.read",
+    "project.files.read",
+    "project.files.write",
+    "actions.destructive",
+    "network.stripe",
+    "network.convex",
+    "network.github"
+  ]
+}

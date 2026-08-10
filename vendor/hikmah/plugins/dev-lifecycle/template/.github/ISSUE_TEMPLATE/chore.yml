@@ -1,0 +1,32 @@
+name: '🧹 Chore / Tech-debt'
+description: Maintenance, dependency bumps, refactor, tooling, cleanup.
+labels: ['type:chore']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ['p0 — critical', 'p1 — high', 'p2 — medium', 'p3 — low']
+      default: 3
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area # ← customize options to your domains
+      multiple: true
+      options: [backend, frontend, api, infra, docs]
+    validations:
+      required: true

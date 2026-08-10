@@ -1,0 +1,32 @@
+{
+  "name": "plugins",
+  "owner": {
+    "name": "Hikmah Labs",
+    "email": "hiqmalabs@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code plugins and skills from Hikmah Labs"
+  },
+  "plugins": [
+    {
+      "name": "general-translation",
+      "source": "./plugins/general-translation",
+      "description": "Set up or extend General Translation (gt-next) i18n in a Next.js App Router app — covers GTProvider placement, <T>/<Var>/t() patterns, ESLint + smoke-test enforcement, locale switching, RTL, and the full app-translation migration workflow."
+    },
+    {
+      "name": "stripe-convex-webhook",
+      "source": "./plugins/stripe-convex-webhook",
+      "description": "Set up (or migrate to) a Stripe webhook hosted on a Convex HTTP endpoint instead of a Next.js API route — Convex httpAction pattern with constructEventAsync, internal-mutation conversion, .convex.site URL discovery, env-var audit, and Stripe Dashboard setup. Removes the need for `stripe listen` in dev."
+    },
+    {
+      "name": "draft-plugin",
+      "source": "./plugins/draft-plugin",
+      "description": "Scaffold a new plugin into the local hikmahlabs/plugins marketplace based on a pattern from the current session — 9-step flow with confirmation prompts, file templates for plugin.json/README/SKILL/references, and the marketplace.json + root README updates (including the U+2011 non-breaking-hyphen rule). Writes files only; never touches git."
+    },
+    {
+      "name": "dev-lifecycle",
+      "source": "./plugins/dev-lifecycle",
+      "description": "End-to-end development lifecycle for any repo — idea → classified GitHub issue on a Projects board → worktree → PR → squash-merge. Run /adopt once to lay the GitHub scaffolding (issue forms, PR template, labels, CI, board bootstrap) into a new or existing repo, then drive features with /intake, /triage, /start, /preflight, /open-pr (config-driven via .github/dev-workflow.yml). Auto-flags sensitive diffs for human review; reviews stay local; merging auto-deploys. Self-contained — no companion repo needed."
+    }
+  ]
+}

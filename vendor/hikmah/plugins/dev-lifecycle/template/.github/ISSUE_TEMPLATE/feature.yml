@@ -1,0 +1,56 @@
+name: '✨ Feature'
+description: A new capability or enhancement.
+labels: ['type:feature']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What user or product need does this address? Why now?
+      placeholder: As a <user>, I want <goal> so that <benefit>.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change? Sketch the behavior, not necessarily the code.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ['p0 — critical', 'p1 — high', 'p2 — medium', 'p3 — low']
+      default: 2
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort (rough)
+      options: ['XS', 'S', 'M', 'L', 'XL']
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area # ← customize options to your domains
+      multiple: true
+      options: [backend, frontend, api, infra, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / risks / sensitive areas
+      description: Anything touching auth, payments, schema/migrations, or destructive data ops? Flag it here.
