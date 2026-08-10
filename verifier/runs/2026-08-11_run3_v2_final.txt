@@ -1,0 +1,52 @@
+=== RUN 2026-08-10T20:22:25Z ===
+cmd: python3 verifier/v2/verify.py (final)
+[PASS] connectors discovered — 21 registered
+[PASS] all required channels present — missing: []
+[PASS] status() claude
+[PASS] smoke call claude.chat
+[PASS] status() cloudflare
+[PASS] smoke call cloudflare.chat
+[PASS] status() contabo
+[PASS] smoke call contabo.list_instances
+[PASS] status() cpanel
+[PASS] smoke call cpanel.list_domains
+[PASS] status() email
+[PASS] smoke call email.list_accounts
+[PASS] status() github
+[PASS] smoke call github.get_me
+[PASS] status() gmail
+[PASS] smoke call gmail.list_accounts
+[PASS] status() hetzner
+[PASS] smoke call hetzner.list_servers
+[PASS] status() kimi
+[PASS] smoke call kimi.chat
+[PASS] status() linode
+[PASS] smoke call linode.list_linodes
+[PASS] status() oneprovider
+[PASS] smoke call oneprovider.list_servers
+[PASS] status() openai
+[PASS] smoke call openai.chat
+[PASS] status() ops_browser
+[PASS] smoke call ops_browser.fetch
+[PASS] status() ops_network
+[PASS] smoke call ops_network.dns_lookup
+[PASS] status() ops_security
+[PASS] smoke call ops_security.generate_secret
+[PASS] status() ops_ssh
+[PASS] smoke call ops_ssh.run_local
+[PASS] status() ovh
+[PASS] smoke call ovh.list_vps
+[PASS] status() tawk
+[PASS] smoke call tawk.list_chats
+[PASS] status() ultrahost
+[PASS] smoke call ultrahost.list_services
+[PASS] status() whm
+[PASS] smoke call whm.list_accounts
+[PASS] status() whmcs
+[PASS] smoke call whmcs.get_clients
+[PASS] mcp.json valid
+[PASS] .env.template covers required_env — missing: []
+[PASS] no hard-coded secrets — []
+
+RESULT: PASS (0 failed checks)
+exit=0
