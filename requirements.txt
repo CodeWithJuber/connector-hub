@@ -1,3 +1,9 @@
+# MCP transport dependency; canonical project metadata and pin live in pyproject.toml.
+mcp==1.29.0
+# Optional extras, only if you want them:
+# playwright==1.*      # real browser screenshots for ops_browser
+# requests>=2.31       # convenience; not required
+# google-api-python-client google-auth-oauthlib  # alt Gmail path; hub works without them via REST
 # Compatibility installer. pyproject.toml is the authoritative dependency list.
 httpx==0.28.1
 mcp==1.29.0
