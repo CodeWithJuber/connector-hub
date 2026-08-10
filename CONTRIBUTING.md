@@ -13,7 +13,8 @@ uv run ruff check .
 uv run mypy
 uv run pytest -m 'not integration'
 uv build
-uv run pip-audit
+uv export --frozen --no-dev --no-emit-project --output-file /tmp/runtime-requirements.txt
+uv run pip-audit --require-hashes --no-deps -r /tmp/runtime-requirements.txt
 ```
 
 5. Open a pull request using the repository template. Describe operational impact, data sources, deployment, and rollback when applicable.

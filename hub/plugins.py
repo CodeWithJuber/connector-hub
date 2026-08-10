@@ -3,22 +3,34 @@
 The loader registers metadata only. It deliberately never imports, downloads, or
 executes plugin content; an application must provide reviewed adapters separately.
 """
-from dataclasses import dataclass
+
 import json
-from pathlib import Path
 import re
-from typing import FrozenSet, Iterable, Mapping, Tuple
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from pathlib import Path
 
 SUPPORTED_API_VERSIONS = frozenset({"connector-hub.plugin/v1"})
-_FIELDS = frozenset({
-    "api_version", "plugin_id", "version", "capabilities", "required_secrets",
-    "allowed_network_hosts", "supports_destructive_actions",
-})
+_FIELDS = frozenset(
+    {
+        "api_version",
+        "plugin_id",
+        "version",
+        "capabilities",
+        "required_secrets",
+        "allowed_network_hosts",
+        "supports_destructive_actions",
+    }
+)
 _ID = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
-_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
+_VERSION = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$")
 _SECRET = re.compile(r"^[A-Z][A-Z0-9_]*$")
-_HOST = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$")
+_HOST = re.compile(
+    r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$"
+)
 
 
 class PluginValidationError(ValueError):
@@ -30,9 +42,9 @@ class PluginManifest:
     api_version: str
     plugin_id: str
     version: str
-    capabilities: Tuple[str, ...]
-    required_secrets: Tuple[str, ...]
-    allowed_network_hosts: Tuple[str, ...]
+    capabilities: tuple[str, ...]
+    required_secrets: tuple[str, ...]
+    allowed_network_hosts: tuple[str, ...]
     supports_destructive_actions: bool
 
 
@@ -42,7 +54,7 @@ class PluginRegistration:
     directory: Path
 
 
-def _string_array(data: Mapping[str, object], field: str, pattern: re.Pattern) -> Tuple[str, ...]:
+def _string_array(data: Mapping[str, object], field: str, pattern: re.Pattern) -> tuple[str, ...]:
     value = data.get(field)
     if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
         raise PluginValidationError(f"{field} must be an array of strings")
@@ -76,7 +88,9 @@ def validate_manifest(data: object, enabled_capabilities: Iterable[str]) -> Plug
     capabilities = _string_array(data, "capabilities", _CAPABILITY)
     disallowed = set(capabilities) - set(enabled_capabilities)
     if disallowed:
-        raise PluginValidationError(f"capabilities disabled by policy: {', '.join(sorted(disallowed))}")
+        raise PluginValidationError(
+            f"capabilities disabled by policy: {', '.join(sorted(disallowed))}"
+        )
     secrets = _string_array(data, "required_secrets", _SECRET)
     hosts = _string_array(data, "allowed_network_hosts", _HOST)
     destructive = data["supports_destructive_actions"]
@@ -84,14 +98,17 @@ def validate_manifest(data: object, enabled_capabilities: Iterable[str]) -> Plug
         raise PluginValidationError("supports_destructive_actions must be a boolean")
     if destructive and "actions.destructive" not in capabilities:
         raise PluginValidationError("destructive plugins must request actions.destructive")
-    return PluginManifest(api_version, plugin_id, version, capabilities, secrets, hosts, destructive)
+    return PluginManifest(
+        api_version, plugin_id, version, capabilities, secrets, hosts, destructive
+    )
 
 
 class PluginLoader:
     """Register local plugin directories contained beneath a fixed trusted root."""
+
     def __init__(self, root: Path, enabled_capabilities: Iterable[str]):
         self.root = root.resolve(strict=True)
-        self.enabled_capabilities: FrozenSet[str] = frozenset(enabled_capabilities)
+        self.enabled_capabilities: frozenset[str] = frozenset(enabled_capabilities)
         self._registrations = {}
 
     @property
@@ -111,11 +128,15 @@ class PluginLoader:
             raise PluginValidationError(f"plugin path is not a directory: {relative_directory}")
         manifest_path = directory / "plugin-manifest.json"
         if manifest_path.is_symlink() or not manifest_path.is_file():
-            raise PluginValidationError(f"plugin manifest is missing or is a symlink: {manifest_path}")
+            raise PluginValidationError(
+                f"plugin manifest is missing or is a symlink: {manifest_path}"
+            )
         try:
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise PluginValidationError(f"cannot read plugin manifest {manifest_path}: {exc}") from exc
+            raise PluginValidationError(
+                f"cannot read plugin manifest {manifest_path}: {exc}"
+            ) from exc
         manifest = validate_manifest(data, self.enabled_capabilities)
         if manifest.plugin_id in self._registrations:
             raise PluginValidationError(f"duplicate plugin ID: {manifest.plugin_id}")
