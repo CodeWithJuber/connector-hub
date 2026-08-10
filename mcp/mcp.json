@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "omni-hub": {
+      "command": "python3",
+      "args": ["-m", "hub.gateway", "mcp"],
+      "cwd": "/mnt/agents/output/connector-hub",
+      "env": {
+        "HUB_ALLOW_LOCAL_EXEC": "0"
+      },
+      "note": "The full hub: every connector (llm, email, gmail, whmcs, whm, cpanel, hetzner, linode, contabo, ovh, oneprovider, ultrahost, tawk, github, ops_*) exposed via hub_channels / hub_status / hub_call tools. Copy .env values into this env block or keep .env beside the project."
+    },
+    "github-official": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${HOME}"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "puppeteer-browser": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}
