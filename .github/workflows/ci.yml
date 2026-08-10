@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.4"
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy
+      - run: uv run pytest -m 'not integration' tests/unit
+      - run: uv build
+      - run: uv run pip-audit
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  protected-integration:
+    if: github.event_name == 'workflow_dispatch'
+    environment: protected-integration
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.4"
+      - run: uv sync --frozen --all-groups
+      - run: uv run pytest -m integration tests/integration
+        env:
+          RUN_INTEGRATION: "1"
+          HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}

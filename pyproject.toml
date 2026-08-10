@@ -1,0 +1,111 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omni-connector-hub"
+version = "1.1.0"
+description = "A typed stdio MCP gateway for service connectors"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = { text = "MIT" }
+authors = [{ name = "Omni Connector Hub maintainers" }]
+dependencies = ["pydantic==2.12.5"]
+
+[project.scripts]
+connector-hub = "hub.gateway:main"
+connector-hub-mcp = "hub.mcp_server:serve"
+
+[dependency-groups]
+dev = [
+  "build==1.3.0",
+  "mypy==1.17.1",
+  "pip-audit==2.9.0",
+  "pytest==9.0.3",
+  "pytest-timeout==2.4.0",
+  "ruff==0.12.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["hub", "connectors"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = ["verifier", "connectors", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S310", "S311", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"connectors/ops/ssh_bash.py" = ["S602"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["hub/schema.py"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers --timeout=10"
+testpaths = ["tests"]
+markers = [
+  "integration: opt-in tests that contact documented provider endpoints",
+  "credentialed: integration tests requiring protected credentials",
+]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-connector-hub"
+version = "2.0.0"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp==1.29.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest==8.4.1",
+  "pytest-anyio==0.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+version = "1.0.0"
+description = "A stdlib-first MCP gateway for service connectors"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Connector Hub contributors"}]
+dependencies = []
+
+[project.scripts]
+connector-hub = "hub.gateway:main"
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "connector-hub"
+version = "2.0.0"
+description = "Validated, observable connector gateway"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "httpx==0.28.1",
+  "mcp==1.29.0",
+  "pydantic==2.13.4",
+  "structlog==26.1.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.2", "pytest-httpx==0.35.0"]
+
+[tool.setuptools.packages.find]
+include = ["hub*", "connectors*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

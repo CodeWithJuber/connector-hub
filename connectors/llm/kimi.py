@@ -37,6 +37,11 @@ class KimiConnector(BaseConnector):
     def _headers(self):
         return {"Authorization": f"Bearer {self.env('MOONSHOT_API_KEY')}"}
 
+    read_only_actions = frozenset(['list_models'])
+    mutating_actions = frozenset(['chat'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['chat'])
+
     def actions(self):
         return ["chat", "list_models"]
 

@@ -13,9 +13,8 @@ Modes:
         &accountid=<id>&serviceid=<id>
     authenticated with ULTRAHOST_API_USER + ULTRAHOST_API_KEY
     (WHMCS API identifier/secret style credentials).
-  * ULTRAHOST_WHMCS_URL unset (but key+user present) -> mock bridge:
-    returns {"ok": True, "mock": True, ...} so workflows can be developed
-    before the billing bridge is provisioned.
+  * ULTRAHOST_WHMCS_URL unset (but key+user present) -> typed configuration
+    failure; requests and their potentially sensitive fields are not echoed.
   * No credentials at all -> standard hub mock mode.
 
 Env:
@@ -35,8 +34,12 @@ from hub.base import BaseConnector, ConnectorError, register
 class UltaHostConnector(BaseConnector):
     name = "ultrahost"
     required_env = ["ULTRAHOST_API_KEY", "ULTRAHOST_API_USER"]
-    description = ("UltaHost VPS via WHMCS-bridge billing API "
-                   "(mock bridge when ULTRAHOST_WHMCS_URL unset)")
+    description = "UltaHost VPS via WHMCS-bridge billing API"
+
+    read_only_actions = frozenset(['list_services', 'get_service', 'status'])
+    mutating_actions = frozenset(['reboot', 'start'])
+    destructive_actions = frozenset(['stop'])
+    dry_run_actions = frozenset(['reboot', 'start', 'stop'])
 
     def actions(self):
         return ["list_services", "get_service", "reboot", "start", "stop",
@@ -50,7 +53,7 @@ class UltaHostConnector(BaseConnector):
     def _whmcs_post(self, form_fields):
         """WHMCS-style form POST; returns parsed JSON dict."""
         form = dict(form_fields)
-        # WHMCS API credential fields; never logged (base redacts *KEY*/*PASS*).
+        # WHMCS API credential fields are never logged or returned.
         form.setdefault("identifier", self.env("ULTRAHOST_API_USER"))
         form.setdefault("secret", self.env("ULTRAHOST_API_KEY"))
         form.setdefault("username", self.env("ULTRAHOST_API_USER"))
@@ -79,20 +82,12 @@ class UltaHostConnector(BaseConnector):
                 f"ultrahost WHMCS bridge error: {data.get('message', 'unknown')}")
         return {"ok": True, "bridge": "whmcs", "data": data}
 
-    def _mock_bridge(self, action, params):
-        return {
-            "ok": True,
-            "mock": True,
-            "connector": self.name,
-            "action": action,
-            "echo": self._redact(params),
-            "note": "set ULTRAHOST_WHMCS_URL to enable the live WHMCS bridge",
-        }
-
     def _live(self, action, **params):
         if not self._whmcs_url():
-            # No billing bridge configured: behave as a mock connector.
-            return self._mock_bridge(action, params)
+            raise ConnectorError(
+                "ultrahost requires ULTRAHOST_WHMCS_URL",
+                "configuration_required",
+            )
 
         if action == "list_services":
             return self._whmcs_post({"action": "GetClientsProducts",
