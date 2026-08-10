@@ -32,6 +32,11 @@ class CloudflareAIConnector(BaseConnector):
     def _headers(self):
         return {"Authorization": f"Bearer {self.env('CLOUDFLARE_API_TOKEN')}"}
 
+    read_only_actions = frozenset([])
+    mutating_actions = frozenset(['chat', 'run_model'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['chat', 'run_model'])
+
     def actions(self):
         return ["chat", "run_model"]
 

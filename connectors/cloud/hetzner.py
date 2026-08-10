@@ -14,6 +14,11 @@ class HetznerConnector(BaseConnector):
     required_env = ["HETZNER_API_TOKEN"]
     description = "Hetzner Cloud: servers, images, locations, ssh keys"
 
+    read_only_actions = frozenset(['list_servers', 'get_server', 'list_images', 'list_locations', 'list_ssh_keys'])
+    mutating_actions = frozenset(['create_server', 'power_on', 'reboot'])
+    destructive_actions = frozenset(['power_off', 'delete_server'])
+    dry_run_actions = frozenset(['create_server', 'power_on', 'reboot', 'power_off', 'delete_server'])
+
     def actions(self):
         return [
             "list_servers", "get_server", "create_server", "power_on",

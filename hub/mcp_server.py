@@ -4,7 +4,7 @@ Framing: LSP-style 'Content-Length: N\\r\\n\\r\n{json}' per message.
 Tools:
   - hub_channels            -> list channels + live/mock mode
   - hub_status              -> {channel}
-  - hub_call                -> {channel, action, params}
+  - hub_call                -> {channel, action, params, dry_run, authorization}
 This keeps the MCP surface stable even as connectors are added.
 """
 import json
@@ -17,12 +17,12 @@ PROTOCOL_VERSION = "2024-11-05"
 TOOLS = [
     {
         "name": "hub_channels",
-        "description": "List every connector channel and whether it is live or mock",
+        "description": "List every connector channel. Use hub_status for configuration and action safety metadata.",
         "inputSchema": {"type": "object", "properties": {}},
     },
     {
         "name": "hub_status",
-        "description": "Status of one channel: mode, missing env vars, available actions",
+        "description": "Status of one channel, including missing configuration and per-action read-only, mutating, destructive, dry-run, and confirmation policies.",
         "inputSchema": {
             "type": "object",
             "properties": {"channel": {"type": "string"}},
@@ -31,13 +31,30 @@ TOOLS = [
     },
     {
         "name": "hub_call",
-        "description": "Call an action on a channel, e.g. channel=email action=check_inbox",
+        "description": (
+            "Call an action. Inspect ok, executed, and state: succeeded means real "
+            "execution; dry_run means no execution; configuration_required and "
+            "upstream_failure are typed failures. Destructive actions require the "
+            "confirmation token shown by hub_status conventions or policy approval."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "channel": {"type": "string"},
                 "action": {"type": "string"},
                 "params": {"type": "object"},
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Preview a dry-run-capable action without performing it.",
+                },
+                "confirmation_token": {
+                    "type": "string",
+                    "description": "For destructive actions: CONFIRM:<channel>:<action>.",
+                },
+                "policy_approved": {
+                    "type": "boolean",
+                    "description": "True only when an external policy engine approved the destructive action.",
+                },
             },
             "required": ["channel", "action"],
         },
@@ -87,7 +104,11 @@ def _call_tool(name, args):
         return _text(get_connector(args["channel"]).status())
     if name == "hub_call":
         conn = get_connector(args["channel"])
-        return _text(conn.call(args["action"], **(args.get("params") or {})))
+        params = dict(args.get("params") or {})
+        for option in ("dry_run", "confirmation_token", "policy_approved"):
+            if option in args:
+                params[option] = args[option]
+        return _text(conn.call(args["action"], **params))
     raise ValueError(f"unknown tool {name}")
 
 

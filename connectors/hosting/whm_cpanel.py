@@ -74,6 +74,11 @@ class WHMConnector(_TokenPanelConnector):
     default_port = 2087
     auth_scheme = "whm"
 
+    read_only_actions = frozenset(['list_accounts', 'list_packages', 'server_status', 'list_zones', 'version'])
+    mutating_actions = frozenset(['create_account', 'suspend_account', 'unsuspend_account'])
+    destructive_actions = frozenset(['terminate_account'])
+    dry_run_actions = frozenset(['create_account', 'suspend_account', 'unsuspend_account', 'terminate_account'])
+
     def actions(self):
         return [
             "list_accounts",
@@ -158,6 +163,11 @@ class CPanelConnector(_TokenPanelConnector):
     env_prefix = "CPANEL"
     default_port = 2083
     auth_scheme = "cpanel"
+
+    read_only_actions = frozenset(['list_domains', 'list_email_accounts', 'list_databases', 'file_list', 'cron_list', 'disk_usage'])
+    mutating_actions = frozenset(['add_subdomain', 'add_email', 'create_database', 'create_db_user', 'cron_add'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['add_subdomain', 'add_email', 'create_database', 'create_db_user', 'cron_add'])
 
     def actions(self):
         return [

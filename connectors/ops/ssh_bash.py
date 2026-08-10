@@ -34,6 +34,11 @@ class OpsSshConnector(BaseConnector):
             if "HUB_ALLOW_LOCAL_EXEC" not in self.missing_env:
                 self.missing_env.append("HUB_ALLOW_LOCAL_EXEC=1")
 
+    read_only_actions = frozenset(['list_hosts'])
+    mutating_actions = frozenset(['run_local', 'run_ssh'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['run_local', 'run_ssh'])
+
     def actions(self):
         return ["run_local", "run_ssh", "list_hosts"]
 

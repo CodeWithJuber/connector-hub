@@ -33,6 +33,11 @@ class OpsSecurityConnector(BaseConnector):
         self.mock = False
         self.missing_env = []
 
+    read_only_actions = frozenset(['audit_password_strength', 'check_ssl', 'scan_common_exposure', 'ssh_config_audit', 'generate_secret'])
+    mutating_actions = frozenset([])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset([])
+
     def actions(self):
         return [
             "audit_password_strength",
@@ -47,7 +52,9 @@ class OpsSecurityConnector(BaseConnector):
 
     def _gated(self, action):
         return {
-            "ok": True,
+            "ok": False,
+            "executed": False,
+            "state": "policy_required",
             "gated": True,
             "action": action,
             "note": "blocked: set HUB_ALLOW_LOCAL_EXEC=1 to enable local/socket ops",

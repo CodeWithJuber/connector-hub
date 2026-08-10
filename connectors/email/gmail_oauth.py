@@ -31,6 +31,11 @@ class GmailOAuthConnector(BaseConnector):
     required_env = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
     description = "Gmail multi-account via OAuth2 refresh tokens (REST API, stdlib only)."
 
+    read_only_actions = frozenset(['list_accounts', 'get_access_token', 'list_messages', 'get_message'])
+    mutating_actions = frozenset(['send'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['send'])
+
     def actions(self):
         return ["list_accounts", "get_access_token", "send", "list_messages", "get_message"]
 

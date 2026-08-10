@@ -71,6 +71,11 @@ class OpsBrowserConnector(BaseConnector):
         self.mock = False
         self.missing_env = []
 
+    read_only_actions = frozenset(['fetch', 'check_status'])
+    mutating_actions = frozenset(['screenshot'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['screenshot'])
+
     def actions(self):
         return ["fetch", "check_status", "screenshot"]
 
@@ -168,10 +173,11 @@ class OpsBrowserConnector(BaseConnector):
                     f"{self.name}: wkhtmltoimage failed: {proc.stderr[:300]}"
                 )
 
-            # No rendering tool available — structured note, still ok.
+            # No rendering tool available: explicitly report non-execution.
             return {
-                "ok": True,
-                "mock": True,
+                "ok": False,
+                "executed": False,
+                "state": "dependency_required",
                 "url": url,
                 "note": "screenshot tooling missing: install 'playwright' "
                         "(+ playwright install chromium) or 'wkhtmltoimage'",

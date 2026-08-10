@@ -34,6 +34,11 @@ class OpsNetworkConnector(BaseConnector):
         self.mock = False
         self.missing_env = []
 
+    read_only_actions = frozenset(['ping', 'dns_lookup', 'port_check', 'traceroute', 'http_headers'])
+    mutating_actions = frozenset([])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset([])
+
     def actions(self):
         return ["ping", "dns_lookup", "port_check", "traceroute", "http_headers"]
 
@@ -42,7 +47,9 @@ class OpsNetworkConnector(BaseConnector):
 
     def _gated(self, action):
         return {
-            "ok": True,
+            "ok": False,
+            "executed": False,
+            "state": "policy_required",
             "gated": True,
             "action": action,
             "note": "system command blocked: set HUB_ALLOW_LOCAL_EXEC=1 to enable",
@@ -115,7 +122,9 @@ class OpsNetworkConnector(BaseConnector):
                 return self._gated(action)
             if not shutil.which("traceroute"):
                 return {
-                    "ok": True,
+                    "ok": False,
+                    "executed": False,
+                    "state": "dependency_required",
                     "host": host,
                     "note": "system 'traceroute' binary not installed",
                     "hops": [],
