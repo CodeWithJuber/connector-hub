@@ -1,0 +1,11 @@
+{
+  "name": "draft-plugin",
+  "version": "1.0.0",
+  "description": "Scaffold a new plugin into the local hikmahlabs/plugins marketplace based on a pattern from the current session. Triggers on phrases like \"turn this into a plugin\", \"create a plugin from this\", \"draft this as a plugin\", \"package this as a hikmah-labs plugin\". Writes files only — never runs git or gh; the user reviews the diff and commits manually.",
+  "author": {
+    "name": "Muhammad Lo",
+    "email": "hiqmalabs@gmail.com"
+  },
+  "homepage": "https://github.com/hikmahlabs/plugins",
+  "license": "MIT"
+}

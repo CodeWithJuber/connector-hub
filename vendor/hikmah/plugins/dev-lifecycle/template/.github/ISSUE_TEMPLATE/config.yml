@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+# Optional: point this at your repo's Discussions for half-formed ideas.
+# contact_links:
+#   - name: Quick idea or question (no template)
+#     url: https://github.com/__OWNER__/__REPO__/discussions
+#     about: For half-formed ideas. File a Feature/Bug/Chore issue when it's ready to be worked.

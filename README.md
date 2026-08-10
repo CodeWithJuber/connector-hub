@@ -66,3 +66,36 @@ mcp/mcp.json    drop-in MCP client config
 scripts/        OAuth setup wizard
 verifier/       acceptance checks + run log
 ```
+
+## Plugin manifests and static loading
+
+Connector Hub accepts only reviewed local plugins described by the closed
+[`connector-hub.plugin/v1` schema](schemas/plugin-manifest.schema.json). A
+manifest declares its ID, semantic version, capabilities, required secret names,
+allowed network hosts, and destructive-action support. `hub.plugins.PluginLoader`
+validates these values and operator-enabled capabilities before registration.
+It rejects unknown fields, duplicate IDs, unsupported API versions, absolute or
+traversing paths, symlink escapes, and capabilities disabled by policy. Discovery
+registers metadata only: it never imports plugin files or downloads source.
+See [ADR 0001](docs/adr/0001-static-third-party-plugin-sources.md) for the trust
+boundary, auditing, updates, and license decision.
+
+## Data Sources and Third-Party Source Code
+
+- **Hikmah Labs plugins** — authoritative upstream source:
+  https://github.com/hikmahlabs/plugins ; pinned Git commit:
+  `f028fb87ecb64de0e284b3b233150da41d938ebf`; MIT license. The audited source
+  snapshot is in `vendor/hikmah/` with its upstream license and provenance.
+  Supported upstream formats are Claude Code marketplace manifests, plugin
+  manifests, Markdown skills/references, and Markdown slash commands. They are
+  reference/instruction content and are not loaded or executed by Connector Hub.
+- **Hikmah pinned commit API record** —
+  https://api.github.com/repos/hikmahlabs/plugins/commits/f028fb87ecb64de0e284b3b233150da41d938ebf
+  (used only by the opt-in provenance integration test; never at runtime).
+- **Forgkit** — no authoritative public source URL, immutable revision, license,
+  or plugin API could be verified for that exact name as of 2026-08-10. Public
+  discovery endpoints checked were https://api.github.com/search/repositories,
+  https://api.github.com/search/users, https://registry.npmjs.org/-/v1/search,
+  and https://pypi.org/pypi/forgkit/json. It is not a dependency, is not
+  executable, and is denied pending owner-confirmed provenance. The quarantine
+  record is `vendor/forgkit/NOT_VENDORED.md`.

@@ -1,0 +1,11 @@
+{
+  "name": "stripe-convex-webhook",
+  "version": "1.0.0",
+  "description": "Set up (or migrate to) a Stripe webhook hosted on a Convex HTTP endpoint instead of a Next.js API route, so Stripe can deliver webhooks directly to dev with no `stripe listen` tunnel. Covers the httpAction pattern, internal-mutation conversion, .convex.site URL discovery, env-var audit, Stripe Dashboard setup, and common pitfalls.",
+  "author": {
+    "name": "Muhammad Lo",
+    "email": "hiqmalabs@gmail.com"
+  },
+  "homepage": "https://github.com/hikmahlabs/plugins",
+  "license": "MIT"
+}
