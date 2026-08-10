@@ -1,21 +1,16 @@
-"""Local bash + remote SSH command execution.
+"""Allowlisted local argv and remote SSH action execution.
 
-SAFETY GATE: real execution only happens when HUB_ALLOW_LOCAL_EXEC=1 is set in
-the environment. Without it the connector is forced into mock mode regardless
-of any other configuration, and call() returns the standard mock echo.
-
-Env:
-  HUB_ALLOW_LOCAL_EXEC=1   — hard gate for real execution
-  SSH_HOSTS — JSON array of host entries:
-    [{"id": "web1", "host": "1.2.3.4", "user": "root", "port": 22,
-      "key_path": "~/.ssh/id_ed25519"}, ...]
-
-Key material is referenced by path only; contents are never read or logged here.
+Both modes require a per-plugin capability, an allowlisted action definition,
+a deployment-approved destructive action, and an approval identifier. No local
+command is interpreted by a shell. Key material is referenced by path only.
 """
 import json
-import subprocess
+import os
+import re
+import shlex
 
 from hub.base import BaseConnector, ConnectorError, register
+from hub.security import SecurityError, SecurityPolicy, bounded_run
 
 LOCAL_TIMEOUT = 60
 SSH_CONNECT_TIMEOUT = 10
@@ -29,10 +24,9 @@ class OpsSshConnector(BaseConnector):
 
     def __init__(self, config=None):
         super().__init__(config)
-        if self.env("HUB_ALLOW_LOCAL_EXEC") != "1":
-            self.mock = True
-            if "HUB_ALLOW_LOCAL_EXEC" not in self.missing_env:
-                self.missing_env.append("HUB_ALLOW_LOCAL_EXEC=1")
+        self.mock = False
+        self.missing_env = []
+        self.security = SecurityPolicy(self.config)
 
     def actions(self):
         return ["run_local", "run_ssh", "list_hosts"]
@@ -59,6 +53,35 @@ class OpsSshConnector(BaseConnector):
             f"{self.name}: unknown host_id '{host_id}'. Known: {known}"
         )
 
+    def _action_argv(self, action_id, args, remote=False):
+        cfg = self.security.plugin(self.name)
+        definitions = cfg.get("remote_actions" if remote else "local_actions", {})
+        definition = definitions.get(action_id)
+        if not isinstance(definition, dict):
+            raise SecurityError(f"{self.name}: action_id '{action_id}' is not allowlisted")
+        executable = definition.get("executable")
+        if not isinstance(executable, str) or (not remote and not os.path.isabs(executable)):
+            raise SecurityError("allowlisted executable must be an absolute path")
+        if not isinstance(args, list) or not all(isinstance(v, str) for v in args):
+            raise SecurityError("args must be a string array")
+        if len(args) > int(definition.get("max_args", 16)):
+            raise SecurityError("too many command arguments")
+        pattern = re.compile(definition.get("arg_pattern", r"^[A-Za-z0-9_./:@%+=,-]{1,256}$"))
+        if any(not pattern.fullmatch(v) for v in args):
+            raise SecurityError("command argument contains disallowed characters")
+        fixed = definition.get("fixed_args", [])
+        if not isinstance(fixed, list) or not all(isinstance(v, str) for v in fixed):
+            raise SecurityError("fixed_args must be a string array")
+        return [executable] + fixed + args
+
+    def _authorized_argv(self, params, remote=False):
+        action_id = params.get("action_id")
+        if not action_id:
+            raise SecurityError("'action_id' is required")
+        self.security.require_capability(self.name, "ssh_exec" if remote else "local_exec",
+                                         action_id, params.get("approval"), True)
+        return action_id, self._action_argv(action_id, params.get("args", []), remote)
+
     # --- live actions -------------------------------------------------------
     def _live(self, action, **params):
         if action == "list_hosts":
@@ -78,76 +101,69 @@ class OpsSshConnector(BaseConnector):
             }
 
         if action == "run_local":
-            command = params.get("command")
-            if not command:
-                raise ConnectorError(f"{self.name}: 'command' is required")
-            proc = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=LOCAL_TIMEOUT,
-            )
+            try:
+                action_id, argv = self._authorized_argv(params)
+                timeout = int(params.get("timeout", LOCAL_TIMEOUT))
+                if timeout < 1 or timeout > LOCAL_TIMEOUT:
+                    raise SecurityError(f"timeout must be between 1 and {LOCAL_TIMEOUT} seconds")
+                proc = bounded_run(argv, timeout,
+                                   self.security.max_output)
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
             return {
-                "ok": proc.returncode == 0,
-                "command": command,
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout,
-                "stderr": proc.stderr,
+                "ok": proc["returncode"] == 0, "action_id": action_id,
+                "exit_code": proc["returncode"], "stdout": proc["stdout"],
+                "stderr": proc["stderr"], "truncated": proc["truncated"],
             }
 
         if action == "run_ssh":
             host_id = params.get("host_id")
-            command = params.get("command")
-            if not host_id or not command:
-                raise ConnectorError(f"{self.name}: 'host_id' and 'command' are required")
+            if not host_id:
+                raise ConnectorError(f"{self.name}: 'host_id' is required")
+            try:
+                action_id, remote_argv = self._authorized_argv(params, remote=True)
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
             h = self._find_host(host_id)
             user = h.get("user", "root")
             host = h.get("host")
             if not host:
                 raise ConnectorError(f"{self.name}: host '{host_id}' has no 'host' field")
             port = int(h.get("port", 22))
+            if port not in self.security.ports:
+                raise ConnectorError(f"{self.name}: SSH port {port} is not allowed")
+            address = self.security.resolve_host(host, port)[0]
             ssh_cmd = [
                 "ssh",
                 "-o", "BatchMode=yes",
                 "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT}",
                 "-o", "StrictHostKeyChecking=accept-new",
+                "-o", f"HostKeyAlias={host}",
                 "-p", str(port),
             ]
             key_path = h.get("key_path")
             expanded_key = None
             if key_path:
-                import os
                 expanded_key = os.path.expanduser(key_path)
                 ssh_cmd += ["-i", expanded_key]
-            ssh_cmd += [f"{user}@{host}", command]
+            remote_command = " ".join(shlex.quote(v) for v in remote_argv)
+            ssh_cmd += [f"{user}@{address}", remote_command]
             try:
-                proc = subprocess.run(
-                    ssh_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=LOCAL_TIMEOUT,
-                )
+                proc = bounded_run(ssh_cmd, LOCAL_TIMEOUT, self.security.max_output,
+                                   secrets=(expanded_key,))
             except FileNotFoundError:
                 raise ConnectorError(f"{self.name}: system 'ssh' binary not found")
-            except subprocess.TimeoutExpired:
+            except SecurityError:
                 raise ConnectorError(
                     f"{self.name}: ssh to '{host_id}' timed out after {LOCAL_TIMEOUT}s"
                 )
-            stdout, stderr = proc.stdout, proc.stderr
-            # Redact key path from ssh's own diagnostics — key material and
-            # its location are never surfaced by this connector.
-            if expanded_key:
-                stdout = stdout.replace(expanded_key, "***")
-                stderr = stderr.replace(expanded_key, "***")
             return {
-                "ok": proc.returncode == 0,
+                "ok": proc["returncode"] == 0,
                 "host_id": host_id,
                 "target": f"{user}@{host}:{port}",
-                "command": command,
-                "exit_code": proc.returncode,
-                "stdout": stdout,
-                "stderr": stderr,
+                "action_id": action_id,
+                "exit_code": proc["returncode"], "stdout": proc["stdout"],
+                "stderr": proc["stderr"], "truncated": proc["truncated"],
             }
 
         raise ConnectorError(f"{self.name}: unhandled action '{action}'")

@@ -54,7 +54,7 @@ python3 -m hub.gateway call gmail send '{"label":"main","to":"x@y.com","subject"
 ## Security model
 
 - Secrets live only in `.env` (git-ignored). Logs redact anything matching KEY/TOKEN/SECRET/PASS.
-- `ops_ssh` and system-level `ops_network` commands do **nothing real** until `HUB_ALLOW_LOCAL_EXEC=1`.
+- Ops commands require deployment capabilities, allowlisted actions, destructive-action enablement, and an auditable approval identifier.
 - OAuth refresh tokens are minted only by the script you run yourself.
 
 ## Layout
@@ -66,3 +66,21 @@ mcp/mcp.json    drop-in MCP client config
 scripts/        OAuth setup wizard
 verifier/       acceptance checks + run log
 ```
+## Security policy
+
+Operations connectors share the fail-closed policy in `hub/security`. Configure
+it through a connector's `config["security"]` object or the
+`HUB_SECURITY_POLICY` JSON environment variable. URL policy defaults to HTTP(S)
+on ports 80 and 443, resolves every initial and redirect host, blocks non-public
+and cloud-metadata addresses, and connects to the validated address while
+retaining the original HTTP Host and TLS SNI values.
+
+Local and SSH execution no longer accepts free-form commands. A deployment must
+enable the plugin capability, define an executable/action allowlist, list the
+action under `destructive_actions`, and supply an identifier found in the
+deployment `approvals` list. `HUB_ALLOW_LOCAL_EXEC` is not an authorization
+mechanism and is ignored. Output is bounded and credentials are redacted.
+
+See `.env.template` for a minimal policy example. Keep approval identifiers in
+your change-management system and inject policy through deployment secrets;
+never commit live approvals or credentials.
