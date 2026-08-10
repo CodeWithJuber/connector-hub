@@ -57,6 +57,11 @@ class OvhConnector(BaseConnector):
         super().__init__(config=config)
         self._server_time_offset = None  # server_ts - local_ts
 
+    read_only_actions = frozenset(['list_vps', 'get_vps', 'list_dedicated', 'get_dedicated', 'get_me', 'list_ips'])
+    mutating_actions = frozenset(['reboot_vps'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['reboot_vps'])
+
     def actions(self):
         return [
             "list_vps", "get_vps", "reboot_vps", "list_dedicated",

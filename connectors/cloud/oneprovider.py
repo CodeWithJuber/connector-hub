@@ -25,6 +25,11 @@ class OneProviderConnector(BaseConnector):
     required_env = ["ONEPROVIDER_API_KEY"]
     description = "OneProvider: dedicated servers, locations, templates, bandwidth"
 
+    read_only_actions = frozenset(['list_servers', 'get_server', 'list_locations', 'list_templates', 'bandwidth'])
+    mutating_actions = frozenset(['reboot'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['reboot'])
+
     def actions(self):
         return [
             "list_servers", "get_server", "reboot", "list_locations",
