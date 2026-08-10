@@ -1,4 +1,19 @@
 [build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-connector-hub"
+version = "1.0.0"
+description = "A stdlib-first MCP gateway for service connectors"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Connector Hub contributors"}]
+dependencies = []
+
+[project.scripts]
+connector-hub = "hub.gateway:main"
 requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
@@ -22,3 +37,4 @@ include = ["hub*", "connectors*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
