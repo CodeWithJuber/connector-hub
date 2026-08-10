@@ -1,12 +1,4 @@
-"""Server security audit connector (stdlib only).
-
-Always allowed (no gate): audit_password_strength, check_ssl, generate_secret.
-Gated behind HUB_ALLOW_LOCAL_EXEC=1: scan_common_exposure (outbound socket
-probing of risky ports) and ssh_config_audit (reads local sshd_config).
-
-required_env=[] — never in mock mode; no external service credentials needed.
-Passwords/secrets passed in are never echoed back.
-"""
+"""Server security audit connector with centralized capability checks."""
 import math
 import os
 import re
@@ -17,6 +9,7 @@ import string
 from datetime import datetime, timezone
 
 from hub.base import BaseConnector, ConnectorError, register
+from hub.security import SecurityError, SecurityPolicy
 
 RISKY_PORTS = {21: "ftp", 23: "telnet", 3306: "mysql", 6379: "redis", 27017: "mongodb"}
 SSHD_CONFIG_DEFAULT = "/etc/ssh/sshd_config"
@@ -32,6 +25,7 @@ class OpsSecurityConnector(BaseConnector):
         super().__init__(config)
         self.mock = False
         self.missing_env = []
+        self.security = SecurityPolicy(self.config)
 
     read_only_actions = frozenset(['audit_password_strength', 'check_ssl', 'scan_common_exposure', 'ssh_config_audit', 'generate_secret'])
     mutating_actions = frozenset([])
@@ -59,6 +53,12 @@ class OpsSecurityConnector(BaseConnector):
             "action": action,
             "note": "blocked: set HUB_ALLOW_LOCAL_EXEC=1 to enable local/socket ops",
         }
+    def _authorize(self, capability, action, approval=None, destructive=False):
+        try:
+            self.security.require_capability(self.name, capability, action,
+                                             approval, destructive)
+        except SecurityError as e:
+            raise ConnectorError(f"{self.name}: {e}")
 
     # --- password audit -------------------------------------------------------
     @staticmethod
@@ -120,9 +120,12 @@ class OpsSecurityConnector(BaseConnector):
             if not domain:
                 raise ConnectorError(f"{self.name}: 'domain' is required")
             port = int(params.get("port", 443))
+            if port not in self.security.ports:
+                raise ConnectorError(f"{self.name}: port {port} is not allowed")
+            address = self.security.resolve_host(domain, port)[0]
             ctx = ssl.create_default_context()
             try:
-                with socket.create_connection((domain, port), timeout=10) as sock:
+                with socket.create_connection((address, port), timeout=10) as sock:
                     with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
                         cert = ssock.getpeercert()
             except ssl.SSLCertVerificationError as e:
@@ -150,14 +153,14 @@ class OpsSecurityConnector(BaseConnector):
             host = params.get("host")
             if not host:
                 raise ConnectorError(f"{self.name}: 'host' is required")
-            if not self._exec_allowed():
-                return self._gated(action)
+            self._authorize("network_scan", action, params.get("approval"), True)
+            addresses = self.security.resolve_host(host, next(iter(RISKY_PORTS)))
             open_ports = []
             for port, service in RISKY_PORTS.items():
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(4)
                 try:
-                    if s.connect_ex((host, port)) == 0:
+                    if s.connect_ex((addresses[0], port)) == 0:
                         open_ports.append({"port": port, "service": service})
                 finally:
                     s.close()
@@ -171,8 +174,7 @@ class OpsSecurityConnector(BaseConnector):
             }
 
         if action == "ssh_config_audit":
-            if not self._exec_allowed():
-                return self._gated(action)
+            self._authorize("local_file_read", action, params.get("approval"), True)
             path = params.get("path") or SSHD_CONFIG_DEFAULT
             if not os.path.isfile(path) or not os.access(path, os.R_OK):
                 return {

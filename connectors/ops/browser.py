@@ -7,14 +7,11 @@ with ok=True so callers can degrade gracefully.
 
 required_env=[] — nothing needed for fetch; mock is forced off.
 """
-import shutil
-import socket
-import urllib.request
-import urllib.error
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 
 from hub.base import BaseConnector, ConnectorError, register
+from hub.security import SecurityError, SecurityPolicy, pinned_urlopen
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -70,6 +67,7 @@ class OpsBrowserConnector(BaseConnector):
         # fetch works with no credentials — always live.
         self.mock = False
         self.missing_env = []
+        self.security = SecurityPolicy(self.config)
 
     read_only_actions = frozenset(['fetch', 'check_status'])
     mutating_actions = frozenset(['screenshot'])
@@ -80,11 +78,10 @@ class OpsBrowserConnector(BaseConnector):
         return ["fetch", "check_status", "screenshot"]
 
     # --- helpers ------------------------------------------------------------
-    def _open(self, url, method="GET", timeout=DEFAULT_TIMEOUT):
-        req = urllib.request.Request(url, method=method)
-        req.add_header("User-Agent", USER_AGENT)
-        req.add_header("Accept", "*/*")
-        return urllib.request.urlopen(req, timeout=timeout)
+    def _open(self, url, method="GET", timeout=DEFAULT_TIMEOUT, max_bytes=2_000_000):
+        return pinned_urlopen(self.security, url, method,
+                              {"User-Agent": USER_AGENT, "Accept": "*/*"},
+                              timeout, max_bytes)
 
     # --- live actions --------------------------------------------------------
     def _live(self, action, **params):
@@ -93,20 +90,18 @@ class OpsBrowserConnector(BaseConnector):
             if not url:
                 raise ConnectorError(f"{self.name}: 'url' is required")
             try:
-                with self._open(url, "GET") as resp:
-                    body = resp.read(2_000_000)
-                    charset = resp.headers.get_content_charset() or "utf-8"
-                    html = body.decode(charset, errors="replace")
-                    out = {
-                        "ok": True,
-                        "url": url,
-                        "status": resp.status,
-                        "content_type": resp.headers.get("Content-Type"),
+                resp = self._open(url, "GET")
+                body = resp["body"]
+                html = body.decode("utf-8", errors="replace")
+                content_type = resp["headers"].get("Content-Type")
+                out = {
+                        "ok": resp["status"] < 400,
+                        "url": resp["url"],
+                        "status": resp["status"],
+                        "content_type": content_type,
                         "bytes": len(body),
                     }
-            except urllib.error.HTTPError as e:
-                return {"ok": False, "url": url, "status": e.code, "error": str(e)}
-            except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
+            except (OSError, SecurityError) as e:
                 raise ConnectorError(f"{self.name}: fetch failed {url}: {e}")
             if params.get("extract_text"):
                 out["text"] = _html_to_text(html)
@@ -122,14 +117,11 @@ class OpsBrowserConnector(BaseConnector):
             def probe(u):
                 for method in ("HEAD", "GET"):
                     try:
-                        with self._open(u, method, timeout=15) as resp:
-                            return {"url": u, "ok": True, "status": resp.status}
-                    except urllib.error.HTTPError as e:
-                        # Some servers reject HEAD; retry once with GET.
-                        if method == "HEAD" and e.code in (400, 403, 405, 501):
+                        resp = self._open(u, method, timeout=15, max_bytes=1024)
+                        if method == "HEAD" and resp["status"] in (400, 403, 405, 501):
                             continue
-                        return {"url": u, "ok": e.code < 400, "status": e.code,
-                                "error": str(e)}
+                        return {"url": resp["url"], "ok": resp["status"] < 400,
+                                "status": resp["status"]}
                     except Exception as e:
                         return {"url": u, "ok": False, "status": None, "error": str(e)}
                 return {"url": u, "ok": False, "status": None, "error": "probe failed"}
@@ -143,8 +135,9 @@ class OpsBrowserConnector(BaseConnector):
             if not url:
                 raise ConnectorError(f"{self.name}: 'url' is required")
             out_path = params.get("out_path", "/tmp/ops_browser_screenshot.png")
-
-            # Preferred: playwright (lazy import, optional dependency).
+            # Rendering engines cannot reliably pin DNS through redirects. Validate,
+            # then require an explicit browser capability before using one.
+            self.security.validate_url(url)
             try:
                 from playwright.sync_api import sync_playwright  # noqa: F401
                 with sync_playwright() as p:
@@ -178,9 +171,16 @@ class OpsBrowserConnector(BaseConnector):
                 "ok": False,
                 "executed": False,
                 "state": "dependency_required",
+                self.security.require_capability(self.name, "browser_render")
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
+
+            # A generic renderer cannot pin the policy-validated address. Keep
+            # screenshots disabled until an isolated, policy-aware worker is used.
+            return {
+                "ok": False,
                 "url": url,
-                "note": "screenshot tooling missing: install 'playwright' "
-                        "(+ playwright install chromium) or 'wkhtmltoimage'",
+                "note": "screenshot requires an isolated policy-aware renderer",
                 "tool": None,
             }
 

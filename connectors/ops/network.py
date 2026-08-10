@@ -1,20 +1,10 @@
-"""Network diagnostics connector.
-
-Socket-based checks (dns_lookup, port_check, http_headers) are read-only and
-run without any gate. System commands (ping, traceroute) shell out to local
-binaries and are gated behind HUB_ALLOW_LOCAL_EXEC=1; without the gate they
-return a structured gated note instead of executing.
-
-required_env=[] — always live for socket checks.
-"""
+"""Policy-constrained network diagnostics connector."""
 import shutil
 import socket
 import ssl
-import subprocess
-import urllib.request
-import urllib.error
 
 from hub.base import BaseConnector, ConnectorError, register
+from hub.security import SecurityError, SecurityPolicy, bounded_run, pinned_urlopen
 
 COMMON_PORTS = [22, 80, 443, 2083, 2087]
 USER_AGENT = (
@@ -33,6 +23,7 @@ class OpsNetworkConnector(BaseConnector):
         super().__init__(config)
         self.mock = False
         self.missing_env = []
+        self.security = SecurityPolicy(self.config)
 
     read_only_actions = frozenset(['ping', 'dns_lookup', 'port_check', 'traceroute', 'http_headers'])
     mutating_actions = frozenset([])
@@ -54,6 +45,8 @@ class OpsNetworkConnector(BaseConnector):
             "action": action,
             "note": "system command blocked: set HUB_ALLOW_LOCAL_EXEC=1 to enable",
         }
+    def _authorize_exec(self, action, approval):
+        self.security.require_capability(self.name, "local_exec", action, approval, True)
 
     # --- live actions --------------------------------------------------------
     def _live(self, action, **params):
@@ -61,25 +54,27 @@ class OpsNetworkConnector(BaseConnector):
             host = params.get("host")
             if not host:
                 raise ConnectorError(f"{self.name}: 'host' is required")
-            if not self._exec_allowed():
-                return self._gated(action)
-            count = int(params.get("count", 4))
             try:
-                proc = subprocess.run(
-                    ["ping", "-c", str(count), "-W", "5", host],
-                    capture_output=True, text=True, timeout=count * 5 + 10,
-                )
+                self._authorize_exec(action, params.get("approval"))
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
+            count = int(params.get("count", 4))
+            if count < 1 or count > 10:
+                raise ConnectorError(f"{self.name}: count must be between 1 and 10")
+            addresses = self.security.resolve_host(host, 0, socket.SOCK_RAW)
+            try:
+                proc = bounded_run(["ping", "-c", str(count), "-W", "5", addresses[0]],
+                                   count * 5 + 10, self.security.max_output)
             except FileNotFoundError:
                 raise ConnectorError(f"{self.name}: system 'ping' binary not found")
-            except subprocess.TimeoutExpired:
+            except SecurityError:
                 raise ConnectorError(f"{self.name}: ping to {host} timed out")
             return {
-                "ok": proc.returncode == 0,
+                "ok": proc["returncode"] == 0,
                 "host": host,
                 "count": count,
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout,
-                "stderr": proc.stderr,
+                "exit_code": proc["returncode"], "stdout": proc["stdout"],
+                "stderr": proc["stderr"], "truncated": proc["truncated"],
             }
 
         if action == "dns_lookup":
@@ -87,11 +82,10 @@ class OpsNetworkConnector(BaseConnector):
             if not domain:
                 raise ConnectorError(f"{self.name}: 'domain' is required")
             try:
-                infos = socket.getaddrinfo(domain, None)
-            except socket.gaierror as e:
-                return {"ok": False, "domain": domain, "error": str(e)}
-            addresses = sorted({info[4][0] for info in infos})
-            families = sorted({socket.AddressFamily(i[0]).name for i in infos})
+                addresses = self.security.resolve_host(domain, 0)
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
+            families = sorted({"AF_INET6" if ":" in a else "AF_INET" for a in addresses})
             return {"ok": True, "domain": domain, "addresses": addresses,
                     "families": families}
 
@@ -103,10 +97,14 @@ class OpsNetworkConnector(BaseConnector):
             results = {}
             for port in ports:
                 port = int(port)
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                if port not in self.security.ports:
+                    raise ConnectorError(f"{self.name}: port {port} is not allowed")
+                addresses = self.security.resolve_host(host, port)
+                family = socket.AF_INET6 if ":" in addresses[0] else socket.AF_INET
+                s = socket.socket(family, socket.SOCK_STREAM)
                 s.settimeout(5)
                 try:
-                    results[str(port)] = s.connect_ex((host, port)) == 0
+                    results[str(port)] = s.connect_ex((addresses[0], port)) == 0
                 except socket.gaierror as e:
                     raise ConnectorError(f"{self.name}: cannot resolve {host}: {e}")
                 finally:
@@ -118,8 +116,11 @@ class OpsNetworkConnector(BaseConnector):
             host = params.get("host")
             if not host:
                 raise ConnectorError(f"{self.name}: 'host' is required")
-            if not self._exec_allowed():
-                return self._gated(action)
+            try:
+                self._authorize_exec(action, params.get("approval"))
+            except SecurityError as e:
+                raise ConnectorError(f"{self.name}: {e}")
+            address = self.security.resolve_host(host, 0, socket.SOCK_RAW)[0]
             if not shutil.which("traceroute"):
                 return {
                     "ok": False,
@@ -129,41 +130,25 @@ class OpsNetworkConnector(BaseConnector):
                     "note": "system 'traceroute' binary not installed",
                     "hops": [],
                 }
-            proc = subprocess.run(
-                ["traceroute", "-m", "20", "-w", "3", host],
-                capture_output=True, text=True, timeout=90,
-            )
+            proc = bounded_run(["traceroute", "-m", "20", "-w", "3", address],
+                               90, self.security.max_output)
             return {
-                "ok": proc.returncode == 0,
+                "ok": proc["returncode"] == 0,
                 "host": host,
-                "exit_code": proc.returncode,
-                "stdout": proc.stdout,
-                "stderr": proc.stderr,
+                "exit_code": proc["returncode"], "stdout": proc["stdout"],
+                "stderr": proc["stderr"], "truncated": proc["truncated"],
             }
 
         if action == "http_headers":
             url = params.get("url")
             if not url:
                 raise ConnectorError(f"{self.name}: 'url' is required")
-            req = urllib.request.Request(url, method="GET")
-            req.add_header("User-Agent", USER_AGENT)
             try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    return {
-                        "ok": True,
-                        "url": url,
-                        "status": resp.status,
-                        "headers": dict(resp.headers.items()),
-                    }
-            except urllib.error.HTTPError as e:
-                return {
-                    "ok": e.code < 400,
-                    "url": url,
-                    "status": e.code,
-                    "headers": dict(e.headers.items()) if e.headers else {},
-                }
-            except (urllib.error.URLError, socket.timeout, TimeoutError,
-                    ssl.SSLError) as e:
+                resp = pinned_urlopen(self.security, url, headers={"User-Agent": USER_AGENT},
+                                      timeout=20, max_bytes=64 * 1024)
+                return {"ok": resp["status"] < 400, "url": resp["url"],
+                        "status": resp["status"], "headers": resp["headers"]}
+            except (OSError, SecurityError, ssl.SSLError) as e:
                 raise ConnectorError(f"{self.name}: http_headers failed {url}: {e}")
 
         raise ConnectorError(f"{self.name}: unhandled action '{action}'")

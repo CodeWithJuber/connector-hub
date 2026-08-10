@@ -1,11 +1,17 @@
-"""Base contract for every connector in the hub.
-
-Zero third-party dependencies. HTTP via urllib. Secrets via env only.
-"""
-import json
+"""Base contract for every connector in the hub."""
 import os
 import urllib.request
 import urllib.error
+import re
+import time
+import uuid
+
+from pydantic import SecretStr, ValidationError
+
+from .http_client import UpstreamError, shared_http_client
+from .logging import log, redact_fields
+from .schemas import validate_action
+from .schemas.actions import secret_field_names
 
 
 class ConnectorError(Exception):
@@ -157,32 +163,44 @@ class BaseConnector:
             "action": action,
             "error": error,
         }
+        self.require(action)
+        request_id = str(params.pop("_request_id", "") or uuid.uuid4())
+        started = time.monotonic()
+        try:
+            params = validate_action(self, action, params)
+        except ValidationError as exc:
+            raise ConnectorError(f"{self.name}.{action}: invalid request: {exc}") from exc
+        secrets = secret_field_names(self, action)
+        log.info("connector_action_start", request_id=request_id, connector=self.name,
+                 action=action, params=redact_fields(params, secrets))
+        params = {k: v.get_secret_value() if isinstance(v, SecretStr) else v for k, v in params.items()}
+        if self.mock:
+            result = {
+                "ok": True,
+                "mock": True,
+                "connector": self.name,
+                "action": action,
+                "echo": redact_fields(params, secrets),
+                "note": f"set {', '.join(self.missing_env)} to go live",
+            }
+        else:
+            result = self._live(action, **params)
+        log.info("connector_action_complete", request_id=request_id, connector=self.name,
+                 action=action, latency_ms=round((time.monotonic()-started)*1000, 2),
+                 upstream_status=result.get("status"))
+        result.setdefault("request_id", request_id)
+        return result
 
     def _live(self, action, **params):
         raise NotImplementedError(f"{self.name} has no live implementation")
 
     # --- HTTP ------------------------------------------------------------
     def http_json(self, method, url, headers=None, payload=None, timeout=30):
-        body = json.dumps(payload).encode() if payload is not None else None
-        req = urllib.request.Request(url, data=body, method=method.upper())
-        req.add_header("Accept", "application/json")
-        if body is not None:
-            req.add_header("Content-Type", "application/json")
-        for k, v in (headers or {}).items():
-            req.add_header(k, v)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                raw = resp.read().decode() or "{}"
-                try:
-                    data = json.loads(raw)
-                except json.JSONDecodeError:
-                    data = {"raw": raw}
-                return {"ok": True, "status": resp.status, "data": data}
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode(errors="replace")[:500]
-            raise ConnectorError(f"{self.name} HTTP {e.code} {url}: {detail}")
-        except urllib.error.URLError as e:
-            raise ConnectorError(f"{self.name} connection failed {url}: {e.reason}")
+            return shared_http_client.request_json(self.name, method, url, headers=headers,
+                                                   payload=payload, cache_safe=True)
+        except UpstreamError as exc:
+            raise ConnectorError(str(exc)) from exc
 
 # --- registry ------------------------------------------------------------
 _REGISTRY = {}

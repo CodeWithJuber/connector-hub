@@ -1,6 +1,44 @@
 # Omni Connector Hub
 
 One channel for everything: AI providers, email (multi-Gmail OAuth), hosting panels, VPS clouds, chat, GitHub, and server ops — behind one interface with explicit execution states and fail-closed safety policies.
+## Production request pipeline
+
+Python 3.11–3.14 is supported. Every CLI, Python, and MCP action is validated by
+the same strict Pydantic v2 request model before mock or live connector code is
+entered. Unknown fields, malformed URLs, invalid ranges, missing values, and
+conflicting provider options are rejected. MCP publishes a dedicated
+`<connector>__<action>` tool whose JSON Schema is generated from that model.
+
+The shared `httpx` transport uses separate connect/read/write/pool timeouts,
+bounded streamed bodies, per-provider concurrency limits, and exponential
+backoff with jitter. Retries are limited to idempotent methods (or requests with
+an explicit idempotency key), honor `Retry-After`, and surface normalized error
+categories. Public safe GETs use bounded ETag/Last-Modified caching. Requests
+with credential headers are not cached; redirects are disabled to reduce secret
+leakage and SSRF pivot risk.
+
+Logs are structured JSON on stderr and include request ID, connector/action,
+latency, attempt count, and upstream status. Authorization/cookie/API-key
+headers and Pydantic `SecretStr` fields are redacted. Keep credentials in
+environment variables; never pass them as action parameters.
+
+### Setup and tests
+
+```bash
+python -m pip install -e '.[test]'
+pytest -q
+RUN_INTEGRATION=1 pytest -q tests/test_integration.py
+python -m hub.gateway mcp
+```
+
+The opt-in integration test reads real public repository metadata and requires
+no credentials.
+
+## Data Sources
+
+https://api.github.com/repos/modelcontextprotocol/python-sdk
+
+One channel for everything: AI providers, email (multi-Gmail OAuth), hosting panels, VPS clouds, chat, GitHub, and server ops — behind **one interface**, with **mock mode** so nothing explodes before you add credentials.
 
 ## Channels
 
@@ -77,6 +115,8 @@ python3 -m hub.gateway call gmail send '{"label":"main","to":"x@y.com","subject"
   echoes parameters because message bodies and customer data can be sensitive
   even when their field names do not look like secrets.
 - `ops_ssh` and system-level `ops_network` commands do **nothing real** until `HUB_ALLOW_LOCAL_EXEC=1`.
+- Secrets live only in `.env` (git-ignored). Logs redact anything matching KEY/TOKEN/SECRET/PASS.
+- Ops commands require deployment capabilities, allowlisted actions, destructive-action enablement, and an auditable approval identifier.
 - OAuth refresh tokens are minted only by the script you run yourself.
 
 ## Layout
@@ -88,3 +128,21 @@ mcp/mcp.json    drop-in MCP client config
 scripts/        OAuth setup wizard
 verifier/       acceptance checks + run log
 ```
+## Security policy
+
+Operations connectors share the fail-closed policy in `hub/security`. Configure
+it through a connector's `config["security"]` object or the
+`HUB_SECURITY_POLICY` JSON environment variable. URL policy defaults to HTTP(S)
+on ports 80 and 443, resolves every initial and redirect host, blocks non-public
+and cloud-metadata addresses, and connects to the validated address while
+retaining the original HTTP Host and TLS SNI values.
+
+Local and SSH execution no longer accepts free-form commands. A deployment must
+enable the plugin capability, define an executable/action allowlist, list the
+action under `destructive_actions`, and supply an identifier found in the
+deployment `approvals` list. `HUB_ALLOW_LOCAL_EXEC` is not an authorization
+mechanism and is ignored. Output is bounded and credentials are redacted.
+
+See `.env.template` for a minimal policy example. Keep approval identifiers in
+your change-management system and inject policy through deployment secrets;
+never commit live approvals or credentials.

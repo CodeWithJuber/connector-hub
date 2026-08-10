@@ -11,6 +11,7 @@ import json
 import sys
 
 from . import get_connector, list_connectors, load_connectors
+from .schemas import action_json_schema
 
 PROTOCOL_VERSION = "2024-11-05"
 
@@ -62,6 +63,20 @@ TOOLS = [
 ]
 
 
+def _tools():
+    """Build MCP schemas directly from the Pydantic action request models."""
+    tools = list(TOOLS)
+    for channel in list_connectors():
+        conn = get_connector(channel)
+        for action in conn.actions():
+            tools.append({
+                "name": f"{channel}__{action}",
+                "description": f"Run {action} on the {channel} connector",
+                "inputSchema": action_json_schema(conn, action),
+            })
+    return tools
+
+
 def _read_message():
     headers = {}
     while True:
@@ -109,6 +124,10 @@ def _call_tool(name, args):
             if option in args:
                 params[option] = args[option]
         return _text(conn.call(args["action"], **params))
+        return _text(conn.call(args["action"], **(args.get("params") or {})))
+    if "__" in name:
+        channel, action = name.split("__", 1)
+        return _text(get_connector(channel).call(action, **args))
     raise ValueError(f"unknown tool {name}")
 
 
@@ -130,7 +149,7 @@ def serve():
             elif method == "notifications/initialized":
                 continue
             elif method == "tools/list":
-                _result(msg_id, {"tools": TOOLS})
+                _result(msg_id, {"tools": _tools()})
             elif method == "tools/call":
                 p = msg.get("params", {})
                 _result(msg_id, _call_tool(p.get("name"), p.get("arguments") or {}))
