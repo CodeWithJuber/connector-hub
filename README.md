@@ -381,3 +381,20 @@ mechanism and is ignored. Output is bounded and credentials are redacted.
 See `.env.template` for a minimal policy example. Keep approval identifiers in
 your change-management system and inject policy through deployment secrets;
 never commit live approvals or credentials.
+
+## Pull-request quality gates
+
+Every pull request runs locked dependency installation, formatting, linting,
+strict type checking, unit tests on the oldest and newest supported Python
+versions, package builds, runtime dependency auditing, secret scanning, and
+CodeQL analysis. Real-provider tests remain opt-in behind the protected
+`protected-integration` environment so untrusted pull requests never receive
+credentials. Dependency updates are proposed weekly for both Python packages
+and GitHub Actions.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the local check sequence and
+[SECURITY.md](SECURITY.md) for private vulnerability reporting. Repository
+administrators should protect `main`, require the `Quality / Python 3.11`,
+`Quality / Python 3.14`, `Security`, and `Analyze Python` checks, require one
+review, dismiss stale approvals, require conversation resolution, and disallow
+force pushes and branch deletion.
