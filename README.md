@@ -33,6 +33,7 @@ One channel for everything: AI providers, email (multi-Gmail OAuth), hosting pan
 ```bash
 cd connector-hub
 cp .env.template .env          # fill in what you use
+python3 -m pip install -e .     # installs the pinned Python MCP SDK
 python3 -m hub.gateway list    # see every channel, MOCK vs LIVE
 python3 -m hub.gateway status gmail
 python3 -m hub.gateway call hetzner list_servers
@@ -49,7 +50,9 @@ python3 -m hub.gateway call gmail send '{"label":"main","to":"x@y.com","subject"
 
 ## Use as MCP server (Claude Desktop / Kimi Code / any MCP client)
 
-`mcp/mcp.json` contains `omni-hub` plus the official github/filesystem/fetch/puppeteer/memory servers. Merge its `mcpServers` block into your client's config. The hub exposes three stable tools — `hub_channels`, `hub_status`, `hub_call` — so every future connector appears automatically.
+`mcp/mcp.json` contains `omni-hub` plus the official github/filesystem/fetch/puppeteer/memory servers. Merge its `mcpServers` block into your client's config. Each validated action is discovered as a generated tool named `hub__<connector>__<action>`. Tool annotations identify read-only and destructive operations.
+
+The SDK server bounds concurrent work and applies a deadline to every connector call. Configure these production safeguards with `HUB_MCP_MAX_CONCURRENCY` (default `8`) and `HUB_MCP_CALL_TIMEOUT` in seconds (default `30`). Diagnostic logs include an internal request ID; client errors are categorized and sanitized.
 
 ## Security model
 
