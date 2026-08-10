@@ -14,6 +14,23 @@ dependencies = []
 
 [project.scripts]
 connector-hub = "hub.gateway:main"
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "connector-hub"
+version = "2.0.0"
+description = "Validated, observable connector gateway"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "httpx==0.28.1",
+  "mcp==1.29.0",
+  "pydantic==2.13.4",
+  "structlog==26.1.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.2", "pytest-httpx==0.35.0"]
 
 [tool.setuptools.packages.find]
 include = ["hub*", "connectors*"]
