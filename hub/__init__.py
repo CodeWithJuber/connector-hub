@@ -1,7 +1,7 @@
 """Omni Connector Hub — one channel router for all your services."""
+
 import importlib
 import os
-import pkgutil
 
 from .base import (  # noqa: F401
     BaseConnector,
