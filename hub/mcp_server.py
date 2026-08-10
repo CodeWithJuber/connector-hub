@@ -8,10 +8,14 @@ Tools:
   - hub_call                -> {channel, action, params, dry_run, authorization}
 This keeps the MCP surface stable even as connectors are added.
 """
+
 import json
 import sys
 
+from pydantic import ValidationError
+
 from . import get_connector, list_connectors, load_connectors
+from .schema import ConnectorRequest, JsonRpcRequest
 from .schemas import action_json_schema
 
 from __future__ import annotations
@@ -180,6 +184,21 @@ def _call_tool(name, args):
 
 def serve():
     load_connectors()
+    while True:
+        raw_msg = _read_message()
+        if raw_msg is None:
+            break
+        try:
+            msg = JsonRpcRequest.model_validate(raw_msg).model_dump()
+        except ValidationError as exc:
+            _error(
+                raw_msg.get("id") if isinstance(raw_msg, dict) else None,
+                -32600,
+                f"invalid request: {exc.errors(include_url=False)}",
+            )
+            continue
+        method = msg.get("method", "")
+        msg_id = msg.get("id")
     registry: dict[str, Action] = {}
     for connector in list_connectors():
         if not _SAFE_NAME.fullmatch(connector):
@@ -333,18 +352,24 @@ def serve() -> None:
     except KeyboardInterrupt:
         LOG.info("server_shutdown")
             if method == "initialize":
-                _result(msg_id, {
-                    "protocolVersion": PROTOCOL_VERSION,
-                    "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "omni-connector-hub", "version": "1.0.0"},
-                })
+                _result(
+                    msg_id,
+                    {
+                        "protocolVersion": PROTOCOL_VERSION,
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {"name": "omni-connector-hub", "version": "1.0.0"},
+                    },
+                )
             elif method == "notifications/initialized":
                 continue
             elif method == "tools/list":
                 _result(msg_id, {"tools": _tools()})
             elif method == "tools/call":
                 p = msg.get("params", {})
-                _result(msg_id, _call_tool(p.get("name"), p.get("arguments") or {}))
+                args = p.get("arguments") or {}
+                if p.get("name") == "hub_call":
+                    args = ConnectorRequest.model_validate(args).model_dump()
+                _result(msg_id, _call_tool(p.get("name"), args))
             elif method == "ping":
                 _result(msg_id, {})
             elif msg_id is not None:

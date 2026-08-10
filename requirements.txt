@@ -1,3 +1,6 @@
+# This project is locked with uv. Install exact runtime and development dependencies with:
+#   uv sync --frozen --all-groups
+# Do not install this compatibility file in CI or production; see pyproject.toml and uv.lock.
 # MCP transport dependency; canonical project metadata and pin live in pyproject.toml.
 mcp==1.29.0
 # Optional extras, only if you want them:

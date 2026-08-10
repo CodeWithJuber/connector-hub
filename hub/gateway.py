@@ -6,6 +6,7 @@ Usage:
   python3 -m hub.gateway call <channel> <action> '{"k": "v"}'
   python3 -m hub.gateway mcp                           # stdio MCP server
 """
+
 import json
 import os
 import sys
@@ -40,6 +41,10 @@ def main(argv=None):
             print(f"[{mode:4}] {name:14} {desc}")
         return 0
 
+    if cmd == "health":
+        print(json.dumps({"ok": True, "service": "omni-connector-hub"}))
+        return 0
+
     if cmd == "status":
         conn = get_connector(argv[1])
         print(json.dumps(conn.status(), indent=2))
@@ -57,6 +62,7 @@ def main(argv=None):
 
     if cmd == "mcp":
         from .mcp_server import serve
+
         serve()
         return 0
 
