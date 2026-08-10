@@ -1,4 +1,18 @@
 """MCP SDK based stdio server for the validated connector action registry."""
+"""Minimal stdio MCP server exposing every connector as tools.
+
+Framing: LSP-style 'Content-Length: N\\r\\n\\r\n{json}' per message.
+Tools:
+  - hub_channels            -> list channels + live/mock mode
+  - hub_status              -> {channel}
+  - hub_call                -> {channel, action, params, dry_run, authorization}
+This keeps the MCP surface stable even as connectors are added.
+"""
+import json
+import sys
+
+from . import get_connector, list_connectors, load_connectors
+from .schemas import action_json_schema
 
 from __future__ import annotations
 
@@ -30,6 +44,19 @@ _ACTION_SCHEMAS: dict[tuple[str, str], dict[str, Any]] = {
             "messages": {"type": "array", "items": {"type": "object"}},
             "model": {"type": "string"},
             "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+TOOLS = [
+    {
+        "name": "hub_channels",
+        "description": "List every connector channel. Use hub_status for configuration and action safety metadata.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "hub_status",
+        "description": "Status of one channel, including missing configuration and per-action read-only, mutating, destructive, dry-run, and confirmation policies.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"channel": {"type": "string"}},
+            "required": ["channel"],
         },
         "required": ["messages"],
         "additionalProperties": True,
@@ -39,11 +66,71 @@ _ACTION_SCHEMAS: dict[tuple[str, str], dict[str, Any]] = {
         "properties": {
             "input": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
             "model": {"type": "string"},
+    {
+        "name": "hub_call",
+        "description": (
+            "Call an action. Inspect ok, executed, and state: succeeded means real "
+            "execution; dry_run means no execution; configuration_required and "
+            "upstream_failure are typed failures. Destructive actions require the "
+            "confirmation token shown by hub_status conventions or policy approval."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "channel": {"type": "string"},
+                "action": {"type": "string"},
+                "params": {"type": "object"},
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Preview a dry-run-capable action without performing it.",
+                },
+                "confirmation_token": {
+                    "type": "string",
+                    "description": "For destructive actions: CONFIRM:<channel>:<action>.",
+                },
+                "policy_approved": {
+                    "type": "boolean",
+                    "description": "True only when an external policy engine approved the destructive action.",
+                },
+            },
+            "required": ["channel", "action"],
         },
         "required": ["input"],
         "additionalProperties": True,
     },
 }
+]
+
+
+def _tools():
+    """Build MCP schemas directly from the Pydantic action request models."""
+    tools = list(TOOLS)
+    for channel in list_connectors():
+        conn = get_connector(channel)
+        for action in conn.actions():
+            tools.append({
+                "name": f"{channel}__{action}",
+                "description": f"Run {action} on the {channel} connector",
+                "inputSchema": action_json_schema(conn, action),
+            })
+    return tools
+
+
+def _read_message():
+    headers = {}
+    while True:
+        line = sys.stdin.buffer.readline()
+        if not line:
+            return None
+        line = line.strip()
+        if not line:
+            break
+        k, _, v = line.partition(b":")
+        headers[k.strip().lower()] = v.strip()
+    length = int(headers.get(b"content-length", 0))
+    if not length:
+        return None
+    return json.loads(sys.stdin.buffer.read(length))
 
 
 @dataclass(frozen=True)
@@ -67,6 +154,31 @@ class Action:
 
 def build_action_registry() -> dict[str, Action]:
     """Validate connector/action identifiers and return tools keyed by MCP name."""
+
+def _text(data):
+    return {"content": [{"type": "text", "text": json.dumps(data, indent=2, default=str)}]}
+
+
+def _call_tool(name, args):
+    if name == "hub_channels":
+        return _text({n: {"description": d} for n, d in list_connectors().items()})
+    if name == "hub_status":
+        return _text(get_connector(args["channel"]).status())
+    if name == "hub_call":
+        conn = get_connector(args["channel"])
+        params = dict(args.get("params") or {})
+        for option in ("dry_run", "confirmation_token", "policy_approved"):
+            if option in args:
+                params[option] = args[option]
+        return _text(conn.call(args["action"], **params))
+        return _text(conn.call(args["action"], **(args.get("params") or {})))
+    if "__" in name:
+        channel, action = name.split("__", 1)
+        return _text(get_connector(channel).call(action, **args))
+    raise ValueError(f"unknown tool {name}")
+
+
+def serve():
     load_connectors()
     registry: dict[str, Action] = {}
     for connector in list_connectors():
@@ -220,3 +332,23 @@ def serve() -> None:
         anyio.run(serve_async)
     except KeyboardInterrupt:
         LOG.info("server_shutdown")
+            if method == "initialize":
+                _result(msg_id, {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "omni-connector-hub", "version": "1.0.0"},
+                })
+            elif method == "notifications/initialized":
+                continue
+            elif method == "tools/list":
+                _result(msg_id, {"tools": _tools()})
+            elif method == "tools/call":
+                p = msg.get("params", {})
+                _result(msg_id, _call_tool(p.get("name"), p.get("arguments") or {}))
+            elif method == "ping":
+                _result(msg_id, {})
+            elif msg_id is not None:
+                _error(msg_id, -32601, f"method not found: {method}")
+        except Exception as e:  # never crash the server loop
+            if msg_id is not None:
+                _error(msg_id, -32000, str(e))

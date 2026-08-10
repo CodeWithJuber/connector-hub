@@ -39,6 +39,11 @@ class GitHubConnector(BaseConnector):
         }
 
     # --- contract --------------------------------------------------------
+    read_only_actions = frozenset(['get_me', 'list_repos', 'get_repo', 'list_branches', 'get_file', 'list_issues', 'list_prs', 'list_workflows', 'list_workflow_runs', 'list_secrets_meta', 'search_code', 'search_repos'])
+    mutating_actions = frozenset(['create_repo', 'create_branch', 'put_file', 'create_issue', 'comment_issue', 'close_issue', 'create_pr', 'review_pr', 'dispatch_workflow', 'create_webhook'])
+    destructive_actions = frozenset(['delete_repo', 'delete_file', 'merge_pr'])
+    dry_run_actions = frozenset(['create_repo', 'create_branch', 'put_file', 'create_issue', 'comment_issue', 'close_issue', 'create_pr', 'review_pr', 'dispatch_workflow', 'create_webhook', 'delete_repo', 'delete_file', 'merge_pr'])
+
     def actions(self):
         return [
             "get_me",

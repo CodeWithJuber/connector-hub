@@ -34,6 +34,11 @@ class ContaboConnector(BaseConnector):
         self._token = None
         self._token_expires_at = 0.0
 
+    read_only_actions = frozenset(['list_instances', 'get_instance', 'list_images', 'list_snapshots'])
+    mutating_actions = frozenset(['create_instance', 'start', 'restart'])
+    destructive_actions = frozenset(['stop'])
+    dry_run_actions = frozenset(['create_instance', 'start', 'restart', 'stop'])
+
     def actions(self):
         return [
             "list_instances", "get_instance", "create_instance", "start",

@@ -23,6 +23,11 @@ class TawkConnector(BaseConnector):
     required_env = ["TAWK_API_KEY", "TAWK_PROPERTY_ID"]
     description = "tawk.to live chat + ticketing via REST API"
 
+    read_only_actions = frozenset(['list_chats', 'get_chat', 'list_tickets', 'get_ticket', 'list_agents', 'property_info'])
+    mutating_actions = frozenset(['send_message', 'reply_ticket'])
+    destructive_actions = frozenset([])
+    dry_run_actions = frozenset(['send_message', 'reply_ticket'])
+
     def actions(self):
         return [
             "list_chats",
