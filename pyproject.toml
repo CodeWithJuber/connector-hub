@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "Omni Connector Hub maintainers" }]
 dependencies = [
   "httpx==0.28.1",
-  "mcp==1.29.0",
+  "mcp==2.0.0",
   "pydantic==2.13.4",
   "structlog==26.1.0",
 ]
@@ -29,13 +29,13 @@ test = [
 
 [dependency-groups]
 dev = [
-  "build==1.3.0",
-  "mypy==1.17.1",
-  "pip-audit==2.9.0",
-  "pytest==8.4.2",
-  "pytest-httpx==0.35.0",
+  "build==1.5.0",
+  "mypy==2.3.0",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "pytest-httpx==0.36.2",
   "pytest-timeout==2.4.0",
-  "ruff==0.12.8",
+  "ruff==0.16.2",
 ]
 
 [tool.hatch.build.targets.wheel]
