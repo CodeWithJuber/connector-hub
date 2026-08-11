@@ -7,7 +7,7 @@ name = "omni-connector-hub"
 version = "2.0.0"
 description = "A validated, observable MCP gateway for service connectors"
 readme = "README.md"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Omni Connector Hub maintainers" }]
 dependencies = [
@@ -20,6 +20,12 @@ dependencies = [
 [project.scripts]
 connector-hub = "hub.gateway:main"
 connector-hub-mcp = "hub.mcp_server:serve"
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.4",
+  "pytest-timeout>=2.4",
+]
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "connector-hub",
+    "hub-core",
+    "hub-net",
+    "hub-auth",
+    "hub-policy",
+    "hub-spec",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/CodeWithJuber/connector-hub"
+
+[workspace.dependencies]
+hub-core = { path = "hub-core" }
+hub-net = { path = "hub-net" }
+hub-auth = { path = "hub-auth" }
+hub-policy = { path = "hub-policy" }
+hub-spec = { path = "hub-spec" }
+
+# Shared dependencies
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+blake3 = "1"
+rmcp = { version = "3.1", features = ["server", "macros", "transport-io"] }
+clap = { version = "4", features = ["derive"] }
+toml = "0.8"
+url = "2"
+anyhow = "1"
+tempfile = "3"

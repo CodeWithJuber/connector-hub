@@ -1,0 +1,179 @@
+mod mcp;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "connector-hub", about = "Omni Connector Hub")]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// List all providers and their operation counts
+    List,
+    /// Search operations across all providers
+    Search {
+        query: String,
+        #[arg(short, long)]
+        provider: Option<String>,
+    },
+    /// Describe a specific operation's schema
+    Describe { operation_id: String },
+    /// Start the MCP stdio server
+    Mcp,
+    /// Verify the audit ledger
+    AuditVerify {
+        #[arg(default_value = "audit.jsonl")]
+        path: String,
+    },
+    /// Validate the installation
+    Validate,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "connector_hub=info".parse().unwrap()),
+        )
+        .with_writer(std::io::stderr)
+        .init();
+
+    let cli = Cli::parse();
+
+    match cli.command {
+        Command::List => {
+            let catalogue = build_catalogue()?;
+            for provider in catalogue.providers() {
+                let ops = catalogue.operations_for_provider(provider);
+                let destructive = ops
+                    .iter()
+                    .filter(|o| o.mutation_class == hub_policy::MutationClass::Destructive)
+                    .count();
+                println!(
+                    "{provider:16} {total:4} operations ({destructive} destructive)",
+                    total = ops.len()
+                );
+            }
+            println!("\nTotal: {} operations", catalogue.len());
+        }
+        Command::Search { query, provider } => {
+            let catalogue = build_catalogue()?;
+            let results = catalogue.search(&query, provider.as_deref());
+            if results.is_empty() {
+                println!("No operations found for '{query}'");
+            } else {
+                for op in &results {
+                    println!(
+                        "{:40} {:12} {}",
+                        op.id,
+                        format!("{:?}", op.mutation_class),
+                        op.summary
+                    );
+                }
+                println!("\n{} results", results.len());
+            }
+        }
+        Command::Describe { operation_id } => {
+            let catalogue = build_catalogue()?;
+            let id = hub_core::OperationId(operation_id);
+            match catalogue.get(&id) {
+                Some(op) => {
+                    println!("{}", serde_json::to_string_pretty(op)?);
+                }
+                None => {
+                    eprintln!("Unknown operation: {id}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        Command::Mcp => {
+            mcp::serve().await?;
+        }
+        Command::AuditVerify { path } => {
+            match hub_policy::AuditLedger::verify(std::path::Path::new(&path)) {
+                Ok(count) => println!("Ledger verified: {count} entries, chain intact"),
+                Err(e) => {
+                    eprintln!("Ledger verification failed: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        Command::Validate => {
+            println!("Validating installation...");
+            let catalogue = build_catalogue()?;
+            println!(
+                "  Catalogue: {} operations across {} providers",
+                catalogue.len(),
+                catalogue.providers().len()
+            );
+            println!(
+                "  Destructive operations: {}",
+                catalogue.destructive_operations().len()
+            );
+            println!("Validation passed.");
+        }
+    }
+
+    Ok(())
+}
+
+fn build_catalogue() -> anyhow::Result<hub_core::Catalogue> {
+    let mut catalogue = hub_core::Catalogue::new();
+
+    let specs_dir = std::path::Path::new("specs");
+    if specs_dir.exists() {
+        for entry in std::fs::read_dir(specs_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "json") {
+                let content = std::fs::read_to_string(&path)?;
+                let provider = path.file_stem().unwrap().to_string_lossy().to_string();
+
+                let result = if content.contains("\"openapi\"") {
+                    let spec = hub_spec::OpenApiSpec::from_json(&content, &provider)?;
+                    spec.operations()?
+                } else if content.contains("\"discoveryVersion\"")
+                    || content.contains("\"baseUrl\"")
+                {
+                    let spec = hub_spec::GoogleDiscoverySpec::from_json(&content, &provider)?;
+                    spec.operations()?
+                } else {
+                    tracing::warn!("unknown spec format: {}", path.display());
+                    continue;
+                };
+
+                for raw in result {
+                    catalogue.register(hub_core::Operation {
+                        id: hub_core::OperationId(raw.id),
+                        provider: raw.provider,
+                        summary: raw.summary,
+                        description: raw.description,
+                        mutation_class: match raw.mutation_class.as_str() {
+                            "destructive" => hub_policy::MutationClass::Destructive,
+                            "mutating" => hub_policy::MutationClass::Mutating,
+                            _ => hub_policy::MutationClass::ReadOnly,
+                        },
+                        http_method: raw.http_method,
+                        path_template: raw.path,
+                        parameters: hub_core::ParameterSchema {
+                            json_schema: raw.parameters,
+                        },
+                        tags: raw.tags,
+                    });
+                }
+
+                tracing::info!(
+                    "loaded {} spec: {} operations",
+                    provider,
+                    catalogue.operations_for_provider(&provider).len()
+                );
+            }
+        }
+    }
+
+    Ok(catalogue)
+}
