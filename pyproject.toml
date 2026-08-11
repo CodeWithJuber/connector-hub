@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "Omni Connector Hub maintainers" }]
 dependencies = [
   "httpx==0.28.1",
-  "mcp==2.0.0",
+  "mcp==1.29.0",
   "pydantic==2.13.4",
   "structlog==26.1.0",
 ]
