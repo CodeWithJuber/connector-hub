@@ -1,10 +1,17 @@
+use std::sync::Arc;
+
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo};
 use rmcp::{ErrorData, ServiceExt, schemars, tool, tool_handler, tool_router};
 use serde::Deserialize;
 
 #[derive(Clone)]
-pub struct HubMcpServer;
+pub struct HubMcpServer {
+    dispatcher: Arc<hub_core::Dispatcher>,
+    auth: Arc<hub_auth::AuthStore>,
+    policy: Arc<hub_policy::Policy>,
+    net: Arc<hub_net::NetClient>,
+}
 
 #[derive(Deserialize, schemars::JsonSchema)]
 struct SearchParams {
@@ -41,8 +48,7 @@ impl HubMcpServer {
         description = "List all available providers and their operation counts"
     )]
     async fn list_providers(&self) -> Result<String, ErrorData> {
-        let catalogue =
-            super::build_catalogue().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let catalogue = self.dispatcher.catalogue();
 
         let mut providers = Vec::new();
         for name in catalogue.providers() {
@@ -68,8 +74,7 @@ impl HubMcpServer {
         &self,
         Parameters(params): Parameters<SearchParams>,
     ) -> Result<String, ErrorData> {
-        let catalogue =
-            super::build_catalogue().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let catalogue = self.dispatcher.catalogue();
 
         let results = catalogue.search(&params.query, params.provider.as_deref());
         let items: Vec<_> = results
@@ -96,8 +101,7 @@ impl HubMcpServer {
         &self,
         Parameters(params): Parameters<DescribeParams>,
     ) -> Result<CallToolResult, ErrorData> {
-        let catalogue =
-            super::build_catalogue().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let catalogue = self.dispatcher.catalogue();
 
         let op_id = hub_core::OperationId(params.id.clone());
         match catalogue.get(&op_id) {
@@ -119,39 +123,19 @@ impl HubMcpServer {
         &self,
         Parameters(params): Parameters<CallParams>,
     ) -> Result<CallToolResult, ErrorData> {
-        let catalogue =
-            super::build_catalogue().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
-
         let op_id = hub_core::OperationId(params.id.clone());
-        let op = catalogue.get(&op_id).ok_or_else(|| {
-            ErrorData::internal_error(format!("Unknown operation: {}", params.id), None)
-        })?;
 
-        if params.dry_run.unwrap_or(false) {
-            let outcome = hub_core::ExecutionOutcome::DryRun {
-                would_execute: op.summary.clone(),
-                mutation_class: format!("{:?}", op.mutation_class),
-            };
-            return Ok(CallToolResult::success(vec![ContentBlock::text(
-                serde_json::to_string_pretty(&outcome).unwrap(),
-            )]));
-        }
-
-        let policy = hub_policy::Policy::deny_all();
-        let auth = hub_auth::AuthStore::from_env();
-        let net = hub_net::NetClient::new(hub_net::SsrfPolicy::default());
-
-        let dispatcher = hub_core::Dispatcher::new(catalogue);
-        let result = dispatcher
+        let result = self
+            .dispatcher
             .call(
                 &op_id,
                 params.args,
                 params.account.as_deref(),
-                false,
+                params.dry_run.unwrap_or(false),
                 params.confirmation_token.as_deref(),
-                &policy,
-                &auth,
-                &net,
+                &self.policy,
+                &self.auth,
+                &self.net,
             )
             .await;
 
@@ -167,7 +151,14 @@ impl HubMcpServer {
 
     #[tool(name = "health", description = "Check the health of the connector hub")]
     async fn health(&self) -> String {
-        serde_json::json!({"ok": true, "service": "connector-hub"}).to_string()
+        let catalogue = self.dispatcher.catalogue();
+        serde_json::json!({
+            "ok": true,
+            "service": "connector-hub",
+            "providers": catalogue.providers().len(),
+            "operations": catalogue.len(),
+        })
+        .to_string()
     }
 }
 
@@ -183,9 +174,25 @@ impl rmcp::ServerHandler for HubMcpServer {
 pub async fn serve() -> anyhow::Result<()> {
     tracing::info!("starting MCP stdio server");
 
-    let server = HubMcpServer;
-    let transport = rmcp::transport::io::stdio();
+    let catalogue = super::build_catalogue()?;
+    let dispatcher = hub_core::Dispatcher::new(catalogue);
 
+    let policy_path = std::path::Path::new("permissions.toml");
+    let policy = if policy_path.exists() {
+        let content = std::fs::read_to_string(policy_path)?;
+        hub_policy::Policy::from_toml(&content)?
+    } else {
+        hub_policy::Policy::deny_all()
+    };
+
+    let server = HubMcpServer {
+        dispatcher: Arc::new(dispatcher),
+        auth: Arc::new(hub_auth::AuthStore::from_env()),
+        policy: Arc::new(policy),
+        net: Arc::new(hub_net::NetClient::new(hub_net::SsrfPolicy::default())),
+    };
+
+    let transport = rmcp::transport::io::stdio();
     let running = server.serve(transport).await?;
     tracing::info!("MCP server running on stdio");
 

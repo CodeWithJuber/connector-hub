@@ -45,4 +45,13 @@ pub enum AuthMethod {
         password: String,
         token_url: String,
     },
+    #[serde(rename = "smtp")]
+    Smtp {
+        host: String,
+        port: u16,
+        username: String,
+        password: String,
+        tls: bool,
+        from_address: String,
+    },
 }

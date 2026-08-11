@@ -1,4 +1,5 @@
 mod client;
+pub mod mail;
 mod redact;
 mod ssrf;
 

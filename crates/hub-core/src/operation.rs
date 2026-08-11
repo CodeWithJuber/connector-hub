@@ -30,6 +30,14 @@ pub struct ParameterSchema {
     pub json_schema: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Transport {
+    #[default]
+    Http,
+    Smtp,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
     pub id: OperationId,
@@ -41,4 +49,6 @@ pub struct Operation {
     pub path_template: String,
     pub parameters: ParameterSchema,
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub transport: Transport,
 }
