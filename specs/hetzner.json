@@ -1,0 +1,1113 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hetzner Cloud API",
+    "version": "1.0.0",
+    "description": "Manage Hetzner Cloud resources: servers, volumes, networks, firewalls, load balancers, certificates, floating IPs, primary IPs, placement groups, images, locations, SSH keys, datacenters, ISOs, server types, and actions."
+  },
+  "servers": [
+    { "url": "https://api.hetzner.cloud/v1" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/servers": {
+      "get": {
+        "operationId": "list_servers",
+        "summary": "List all servers",
+        "tags": ["servers"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["initializing", "starting", "running", "stopping", "off", "deleting", "migrating", "rebuilding", "unknown"] } }
+        ]
+      },
+      "post": {
+        "operationId": "create_server",
+        "summary": "Create a server",
+        "tags": ["servers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "server_type", "image"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "server_type": { "type": "string" },
+                  "image": { "type": "string" },
+                  "location": { "type": "string" },
+                  "datacenter": { "type": "string" },
+                  "ssh_keys": { "type": "array", "items": { "type": "string" } },
+                  "volumes": { "type": "array", "items": { "type": "integer" } },
+                  "networks": { "type": "array", "items": { "type": "integer" } },
+                  "firewalls": { "type": "array", "items": { "type": "object", "properties": { "firewall": { "type": "integer" } } } },
+                  "user_data": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+                  "automount": { "type": "boolean" },
+                  "start_after_create": { "type": "boolean", "default": true },
+                  "placement_group": { "type": "integer" },
+                  "public_net": { "type": "object", "properties": { "enable_ipv4": { "type": "boolean" }, "enable_ipv6": { "type": "boolean" }, "ipv4": { "type": "integer" }, "ipv6": { "type": "integer" } } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}": {
+      "get": {
+        "operationId": "get_server",
+        "summary": "Get a server",
+        "tags": ["servers"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "put": {
+        "operationId": "update_server",
+        "summary": "Update a server",
+        "tags": ["servers"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_server",
+        "summary": "Delete a server",
+        "tags": ["servers"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/power_on": {
+      "post": {
+        "operationId": "power_on",
+        "summary": "Power on a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/power_off": {
+      "post": {
+        "operationId": "power_off",
+        "summary": "Power off a server (hard, immediate)",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/shutdown": {
+      "post": {
+        "operationId": "shutdown_server",
+        "summary": "Graceful shutdown of a server via ACPI",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/reboot": {
+      "post": {
+        "operationId": "reboot",
+        "summary": "Reboot a server (soft reboot)",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/reset": {
+      "post": {
+        "operationId": "reset_server",
+        "summary": "Hard reset a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/rebuild": {
+      "post": {
+        "operationId": "rebuild_server",
+        "summary": "Rebuild a server from an image (destructive, data on disk is lost)",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}/actions/change_type": {
+      "post": {
+        "operationId": "change_server_type",
+        "summary": "Change the type (plan) of a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["server_type", "upgrade_disk"],
+                "properties": {
+                  "server_type": { "type": "string" },
+                  "upgrade_disk": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}/actions/enable_rescue": {
+      "post": {
+        "operationId": "enable_rescue",
+        "summary": "Enable rescue mode for a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["linux32", "linux64"], "default": "linux64" },
+                  "ssh_keys": { "type": "array", "items": { "type": "integer" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}/actions/disable_rescue": {
+      "post": {
+        "operationId": "disable_rescue",
+        "summary": "Disable rescue mode for a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/create_image": {
+      "post": {
+        "operationId": "create_server_image",
+        "summary": "Create an image (snapshot) from a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "type": { "type": "string", "enum": ["snapshot", "backup"], "default": "snapshot" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}/actions/attach_iso": {
+      "post": {
+        "operationId": "attach_iso",
+        "summary": "Attach an ISO to a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["iso"],
+                "properties": {
+                  "iso": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/servers/{id}/actions/detach_iso": {
+      "post": {
+        "operationId": "detach_iso",
+        "summary": "Detach an ISO from a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/enable_backup": {
+      "post": {
+        "operationId": "enable_backup",
+        "summary": "Enable backups for a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/disable_backup": {
+      "post": {
+        "operationId": "disable_backup",
+        "summary": "Disable backups for a server",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/actions/change_dns_ptr": {
+      "post": {
+        "operationId": "change_dns_ptr",
+        "summary": "Change reverse DNS entry for a server IP",
+        "tags": ["servers", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ip", "dns_ptr"],
+                "properties": {
+                  "ip": { "type": "string" },
+                  "dns_ptr": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images": {
+      "get": {
+        "operationId": "list_images",
+        "summary": "List all images (snapshots, backups, system images)",
+        "tags": ["images"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["system", "snapshot", "backup"] } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["available", "creating"] } },
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "architecture", "in": "query", "schema": { "type": "string", "enum": ["x86", "arm"] } }
+        ]
+      }
+    },
+    "/images/{id}": {
+      "get": {
+        "operationId": "get_image",
+        "summary": "Get an image",
+        "tags": ["images"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "put": {
+        "operationId": "update_image",
+        "summary": "Update an image",
+        "tags": ["images"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": { "type": "string" },
+                  "type": { "type": "string", "enum": ["snapshot"] },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_image",
+        "summary": "Delete an image (snapshot only)",
+        "tags": ["images"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/locations": {
+      "get": {
+        "operationId": "list_locations",
+        "summary": "List all locations",
+        "tags": ["locations"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/ssh_keys": {
+      "get": {
+        "operationId": "list_ssh_keys",
+        "summary": "List all SSH keys",
+        "tags": ["ssh_keys"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_ssh_key",
+        "summary": "Create an SSH key",
+        "tags": ["ssh_keys"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "public_key"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "public_key": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ssh_keys/{id}": {
+      "get": {
+        "operationId": "get_ssh_key",
+        "summary": "Get an SSH key",
+        "tags": ["ssh_keys"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "put": {
+        "operationId": "update_ssh_key",
+        "summary": "Update an SSH key",
+        "tags": ["ssh_keys"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_ssh_key",
+        "summary": "Delete an SSH key",
+        "tags": ["ssh_keys"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/server_types": {
+      "get": {
+        "operationId": "list_server_types",
+        "summary": "List all server types (plans)",
+        "tags": ["server_types"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/datacenters": {
+      "get": {
+        "operationId": "list_datacenters",
+        "summary": "List all datacenters",
+        "tags": ["datacenters"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/isos": {
+      "get": {
+        "operationId": "list_isos",
+        "summary": "List all ISOs",
+        "tags": ["isos"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "architecture", "in": "query", "schema": { "type": "string", "enum": ["x86", "arm"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/actions": {
+      "get": {
+        "operationId": "list_actions",
+        "summary": "List all actions across all resources",
+        "tags": ["actions"],
+        "parameters": [
+          { "name": "id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["running", "success", "error"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/actions/{id}": {
+      "get": {
+        "operationId": "get_action",
+        "summary": "Get an action",
+        "tags": ["actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/volumes": {
+      "get": {
+        "operationId": "list_volumes",
+        "summary": "List all volumes",
+        "tags": ["volumes"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["creating", "available"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_volume",
+        "summary": "Create a volume",
+        "tags": ["volumes"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["size", "name"],
+                "properties": {
+                  "size": { "type": "integer", "description": "Size in GB" },
+                  "name": { "type": "string" },
+                  "location": { "type": "string" },
+                  "server": { "type": "integer" },
+                  "automount": { "type": "boolean" },
+                  "format": { "type": "string", "enum": ["xfs", "ext4"] },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/volumes/{id}": {
+      "get": {
+        "operationId": "get_volume",
+        "summary": "Get a volume",
+        "tags": ["volumes"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "put": {
+        "operationId": "update_volume",
+        "summary": "Update a volume",
+        "tags": ["volumes"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_volume",
+        "summary": "Delete a volume",
+        "tags": ["volumes"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/volumes/{id}/actions/attach": {
+      "post": {
+        "operationId": "attach_volume",
+        "summary": "Attach a volume to a server",
+        "tags": ["volumes", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["server"],
+                "properties": {
+                  "server": { "type": "integer" },
+                  "automount": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/volumes/{id}/actions/detach": {
+      "post": {
+        "operationId": "detach_volume",
+        "summary": "Detach a volume from a server",
+        "tags": ["volumes", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/volumes/{id}/actions/resize": {
+      "post": {
+        "operationId": "resize_volume",
+        "summary": "Resize a volume",
+        "tags": ["volumes", "actions"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["size"],
+                "properties": {
+                  "size": { "type": "integer", "description": "New size in GB (can only grow)" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/networks": {
+      "get": {
+        "operationId": "list_networks",
+        "summary": "List all networks",
+        "tags": ["networks"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_network",
+        "summary": "Create a network",
+        "tags": ["networks"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "ip_range"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "ip_range": { "type": "string", "description": "CIDR block, e.g. 10.0.0.0/8" },
+                  "subnets": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "ip_range": { "type": "string" }, "network_zone": { "type": "string" } } } },
+                  "routes": { "type": "array", "items": { "type": "object", "properties": { "destination": { "type": "string" }, "gateway": { "type": "string" } } } },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/networks/{id}": {
+      "get": {
+        "operationId": "get_network",
+        "summary": "Get a network",
+        "tags": ["networks"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_network",
+        "summary": "Delete a network",
+        "tags": ["networks"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/firewalls": {
+      "get": {
+        "operationId": "list_firewalls",
+        "summary": "List all firewalls",
+        "tags": ["firewalls"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_firewall",
+        "summary": "Create a firewall",
+        "tags": ["firewalls"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["direction", "protocol"],
+                      "properties": {
+                        "direction": { "type": "string", "enum": ["in", "out"] },
+                        "protocol": { "type": "string", "enum": ["tcp", "udp", "icmp", "esp", "gre"] },
+                        "port": { "type": "string" },
+                        "source_ips": { "type": "array", "items": { "type": "string" } },
+                        "destination_ips": { "type": "array", "items": { "type": "string" } }
+                      }
+                    }
+                  },
+                  "apply_to": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "server": { "type": "object", "properties": { "id": { "type": "integer" } } } } } },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/firewalls/{id}": {
+      "get": {
+        "operationId": "get_firewall",
+        "summary": "Get a firewall",
+        "tags": ["firewalls"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "put": {
+        "operationId": "update_firewall",
+        "summary": "Update a firewall",
+        "tags": ["firewalls"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_firewall",
+        "summary": "Delete a firewall",
+        "tags": ["firewalls"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/floating_ips": {
+      "get": {
+        "operationId": "list_floating_ips",
+        "summary": "List all floating IPs",
+        "tags": ["floating_ips"],
+        "parameters": [
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_floating_ip",
+        "summary": "Create a floating IP",
+        "tags": ["floating_ips"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "home_location"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["ipv4", "ipv6"] },
+                  "home_location": { "type": "string" },
+                  "server": { "type": "integer" },
+                  "description": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floating_ips/{id}": {
+      "get": {
+        "operationId": "get_floating_ip",
+        "summary": "Get a floating IP",
+        "tags": ["floating_ips"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_floating_ip",
+        "summary": "Delete a floating IP",
+        "tags": ["floating_ips"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/load_balancers": {
+      "get": {
+        "operationId": "list_load_balancers",
+        "summary": "List all load balancers",
+        "tags": ["load_balancers"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_load_balancer",
+        "summary": "Create a load balancer",
+        "tags": ["load_balancers"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "load_balancer_type", "algorithm"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "load_balancer_type": { "type": "string" },
+                  "algorithm": { "type": "object", "properties": { "type": { "type": "string", "enum": ["round_robin", "least_connections"] } } },
+                  "location": { "type": "string" },
+                  "network_zone": { "type": "string" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+                  "targets": { "type": "array", "items": { "type": "object" } },
+                  "services": { "type": "array", "items": { "type": "object" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/load_balancers/{id}": {
+      "get": {
+        "operationId": "get_load_balancer",
+        "summary": "Get a load balancer",
+        "tags": ["load_balancers"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_load_balancer",
+        "summary": "Delete a load balancer",
+        "tags": ["load_balancers"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/certificates": {
+      "get": {
+        "operationId": "list_certificates",
+        "summary": "List all certificates",
+        "tags": ["certificates"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["uploaded", "managed"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_certificate",
+        "summary": "Create a certificate",
+        "tags": ["certificates"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string", "enum": ["uploaded", "managed"] },
+                  "certificate": { "type": "string" },
+                  "private_key": { "type": "string" },
+                  "domain_names": { "type": "array", "items": { "type": "string" } },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/certificates/{id}": {
+      "get": {
+        "operationId": "get_certificate",
+        "summary": "Get a certificate",
+        "tags": ["certificates"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_certificate",
+        "summary": "Delete a certificate",
+        "tags": ["certificates"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/placement_groups": {
+      "get": {
+        "operationId": "list_placement_groups",
+        "summary": "List all placement groups",
+        "tags": ["placement_groups"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["spread"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_placement_group",
+        "summary": "Create a placement group",
+        "tags": ["placement_groups"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "type"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string", "enum": ["spread"] },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/placement_groups/{id}": {
+      "get": {
+        "operationId": "get_placement_group",
+        "summary": "Get a placement group",
+        "tags": ["placement_groups"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_placement_group",
+        "summary": "Delete a placement group",
+        "tags": ["placement_groups"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/primary_ips": {
+      "get": {
+        "operationId": "list_primary_ips",
+        "summary": "List all primary IPs",
+        "tags": ["primary_ips"],
+        "parameters": [
+          { "name": "name", "in": "query", "schema": { "type": "string" } },
+          { "name": "label_selector", "in": "query", "schema": { "type": "string" } },
+          { "name": "ip", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer" } }
+        ]
+      },
+      "post": {
+        "operationId": "create_primary_ip",
+        "summary": "Create a primary IP",
+        "tags": ["primary_ips"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "name", "assignee_type"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["ipv4", "ipv6"] },
+                  "name": { "type": "string" },
+                  "assignee_type": { "type": "string", "enum": ["server"] },
+                  "assignee_id": { "type": "integer" },
+                  "datacenter": { "type": "string" },
+                  "auto_delete": { "type": "boolean" },
+                  "labels": { "type": "object", "additionalProperties": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/primary_ips/{id}": {
+      "get": {
+        "operationId": "get_primary_ip",
+        "summary": "Get a primary IP",
+        "tags": ["primary_ips"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_primary_ip",
+        "summary": "Delete a primary IP",
+        "tags": ["primary_ips"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    }
+  }
+}

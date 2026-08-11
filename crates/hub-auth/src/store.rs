@@ -94,6 +94,53 @@ impl AuthStore {
             });
         }
 
+        // Gmail OAuth2 accounts: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, plus
+        // GMAIL_REFRESH_TOKEN (default account) or GMAIL_REFRESH_TOKEN_<LABEL>
+        // for named accounts.
+        let gmail_client_id = std::env::var("GMAIL_CLIENT_ID").ok();
+        let gmail_client_secret = std::env::var("GMAIL_CLIENT_SECRET").ok();
+
+        if let (Some(client_id), Some(client_secret)) = (gmail_client_id, gmail_client_secret) {
+            if let Ok(token) = std::env::var("GMAIL_REFRESH_TOKEN") {
+                store.add(Credential {
+                    provider: "gmail".into(),
+                    account_id: "default".into(),
+                    base_url: Some("https://gmail.googleapis.com/gmail/v1/users/me".into()),
+                    auth: crate::credential::AuthMethod::OAuth2 {
+                        client_id: client_id.clone(),
+                        client_secret: client_secret.clone(),
+                        refresh_token: token,
+                        token_url: "https://oauth2.googleapis.com/token".into(),
+                        scopes: vec![],
+                        access_token: None,
+                        expires_at: None,
+                    },
+                });
+            }
+
+            for (key, val) in std::env::vars() {
+                if let Some(label) = key
+                    .strip_prefix("GMAIL_REFRESH_TOKEN_")
+                    .filter(|l| !l.is_empty())
+                {
+                    store.add(Credential {
+                        provider: "gmail".into(),
+                        account_id: label.to_lowercase(),
+                        base_url: Some("https://gmail.googleapis.com/gmail/v1/users/me".into()),
+                        auth: crate::credential::AuthMethod::OAuth2 {
+                            client_id: client_id.clone(),
+                            client_secret: client_secret.clone(),
+                            refresh_token: val,
+                            token_url: "https://oauth2.googleapis.com/token".into(),
+                            scopes: vec![],
+                            access_token: None,
+                            expires_at: None,
+                        },
+                    });
+                }
+            }
+        }
+
         store
     }
 }
