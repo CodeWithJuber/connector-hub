@@ -1,0 +1,12 @@
+[package]
+name = "hub-auth"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Credential store: OS keychain, encrypted file, env var fallback"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
