@@ -10,7 +10,8 @@ from datetime import timedelta
 
 import anyio
 import pytest
-from mcp.shared.memory import create_connected_server_and_client_session
+from mcp.client._memory import InMemoryTransport
+from mcp.client.session import ClientSession
 
 from hub.mcp_server import create_server
 
@@ -18,36 +19,40 @@ from hub.mcp_server import create_server
 @pytest.mark.anyio
 async def test_initialize_discovery_and_valid_call() -> None:
     server = create_server()
-    async with create_connected_server_and_client_session(server) as client:
-        tools = (await client.list_tools()).tools
-        names = {tool.name for tool in tools}
-        assert "hub__openai__list_models" in names
-        tool = next(item for item in tools if item.name == "hub__openai__list_models")
-        assert tool.inputSchema["type"] == "object"
-        assert tool.annotations.readOnlyHint is True
+    async with InMemoryTransport(server) as streams:
+        async with ClientSession(*streams) as client:
+            await client.initialize()
+            tools = (await client.list_tools()).tools
+            names = {tool.name for tool in tools}
+            assert "hub__openai__list_models" in names
+            tool = next(item for item in tools if item.name == "hub__openai__list_models")
+            assert tool.inputSchema["type"] == "object"
+            assert tool.annotations.readOnlyHint is True
 
-        result = await client.call_tool("hub__openai__list_models", {})
-        assert result.isError is not True
-        body = json.loads(result.content[0].text)
-        assert body["connector"] == "openai"
-        assert body["action"] == "list_models"
+            result = await client.call_tool("hub__openai__list_models", {})
+            assert result.isError is not True
+            body = json.loads(result.content[0].text)
+            assert body["connector"] == "openai"
+            assert body["action"] == "list_models"
 
 
 @pytest.mark.anyio
 async def test_invalid_arguments_and_unknown_connector_action_are_sanitized() -> None:
     server = create_server()
-    async with create_connected_server_and_client_session(server) as client:
-        invalid = await client.call_tool("hub__openai__chat", {"messages": "not-a-list"})
-        assert invalid.isError is True
-        assert "Input validation error" in invalid.content[0].text
+    async with InMemoryTransport(server) as streams:
+        async with ClientSession(*streams) as client:
+            await client.initialize()
+            invalid = await client.call_tool("hub__openai__chat", {"messages": "not-a-list"})
+            assert invalid.isError is True
+            assert "Input validation error" in invalid.content[0].text
 
-        unknown_action = await client.call_tool("hub__openai__does_not_exist", {})
-        assert unknown_action.isError is True
-        assert json.loads(unknown_action.content[0].text)["error"]["type"] == "unknown_action"
+            unknown_action = await client.call_tool("hub__openai__does_not_exist", {})
+            assert unknown_action.isError is True
+            assert json.loads(unknown_action.content[0].text)["error"]["type"] == "unknown_action"
 
-        unknown_connector = await client.call_tool("hub__does_not_exist__status", {})
-        assert unknown_connector.isError is True
-        assert "does not exist" in unknown_connector.content[0].text
+            unknown_connector = await client.call_tool("hub__does_not_exist__status", {})
+            assert unknown_connector.isError is True
+            assert "does not exist" in unknown_connector.content[0].text
 
 
 @pytest.mark.anyio
@@ -71,12 +76,12 @@ async def test_call_deadline_cancels_waiting_client(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(mcp_server, "get_connector", connector)
     server = create_server(timeout_seconds=0.02)
-    async with create_connected_server_and_client_session(
-        server, read_timeout_seconds=timedelta(seconds=1)
-    ) as client:
-        result = await client.call_tool("hub__openai__wait", {})
-        assert result.isError is True
-        assert json.loads(result.content[0].text)["error"]["type"] == "timeout"
+    async with InMemoryTransport(server) as streams:
+        async with ClientSession(*streams, read_timeout_seconds=timedelta(seconds=1)) as client:
+            await client.initialize()
+            result = await client.call_tool("hub__openai__wait", {})
+            assert result.isError is True
+            assert json.loads(result.content[0].text)["error"]["type"] == "timeout"
 
 
 def test_malformed_input_and_graceful_eof_termination() -> None:
@@ -102,10 +107,14 @@ def test_malformed_input_and_graceful_eof_termination() -> None:
 @pytest.mark.anyio
 async def test_client_cancellation_terminates_call() -> None:
     server = create_server(timeout_seconds=5)
-    async with create_connected_server_and_client_session(server) as client:
-        with anyio.move_on_after(0.001) as scope:
-            await client.call_tool("hub__ops_network__ping", {"host": "192.0.2.1", "count": 5})
-        assert scope.cancel_called
+    async with InMemoryTransport(server) as streams:
+        async with ClientSession(*streams) as client:
+            await client.initialize()
+            with anyio.move_on_after(0.001) as scope:
+                await client.call_tool(
+                    "hub__ops_network__ping", {"host": "192.0.2.1", "count": 5}
+                )
+            assert scope.cancel_called
 
 
 @pytest.fixture
