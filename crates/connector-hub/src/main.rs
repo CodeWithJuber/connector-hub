@@ -103,17 +103,111 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Command::Validate => {
-            println!("Validating installation...");
-            let catalogue = build_catalogue()?;
-            println!(
-                "  Catalogue: {} operations across {} providers",
-                catalogue.len(),
-                catalogue.providers().len()
-            );
-            println!(
-                "  Destructive operations: {}",
-                catalogue.destructive_operations().len()
-            );
+            let mut errors: Vec<String> = Vec::new();
+            let mut warnings: Vec<String> = Vec::new();
+
+            println!("Validating installation...\n");
+
+            // 1. Check specs directory
+            let specs_dir = std::path::Path::new("specs");
+            if !specs_dir.exists() {
+                errors.push("specs/ directory not found".into());
+            } else {
+                let mut spec_count = 0;
+                for entry in std::fs::read_dir(specs_dir)? {
+                    let entry = entry?;
+                    let path = entry.path();
+                    if path.extension().is_some_and(|e| e == "json") {
+                        let content = std::fs::read_to_string(&path)?;
+                        let provider = path.file_stem().unwrap().to_string_lossy().to_string();
+                        if let Err(e) = serde_json::from_str::<serde_json::Value>(&content) {
+                            errors.push(format!("specs/{provider}.json: invalid JSON: {e}"));
+                        } else {
+                            spec_count += 1;
+                        }
+                    }
+                }
+                println!("  Specs directory: {spec_count} spec file(s) found");
+            }
+
+            // 2. Build catalogue and check for issues
+            match build_catalogue() {
+                Ok(catalogue) => {
+                    println!(
+                        "  Catalogue: {} operations across {} providers",
+                        catalogue.len(),
+                        catalogue.providers().len()
+                    );
+                    println!(
+                        "  Destructive operations: {}",
+                        catalogue.destructive_operations().len()
+                    );
+
+                    if catalogue.is_empty() {
+                        warnings.push("catalogue is empty — no operations loaded".into());
+                    }
+
+                    // 3. Check for duplicate operation IDs (the catalogue is a
+                    // HashMap so duplicates silently overwrite — detect that)
+                    let mut seen_ids: std::collections::HashMap<&str, &str> =
+                        std::collections::HashMap::new();
+                    for op in catalogue.all_operations() {
+                        if let Some(prev_provider) = seen_ids.get(op.id.0.as_str()) {
+                            errors.push(format!(
+                                "duplicate operation ID '{}' in providers '{}' and '{}'",
+                                op.id, prev_provider, op.provider
+                            ));
+                        } else {
+                            seen_ids.insert(&op.id.0, &op.provider);
+                        }
+                    }
+
+                    // 4. Check each provider has at least one operation
+                    for provider in catalogue.providers() {
+                        let ops = catalogue.operations_for_provider(provider);
+                        if ops.is_empty() {
+                            warnings.push(format!("provider '{provider}' has no operations"));
+                        }
+                    }
+                }
+                Err(e) => {
+                    errors.push(format!("failed to build catalogue: {e}"));
+                }
+            }
+
+            // 5. Check auth store can find credentials (warnings only)
+            let auth = hub_auth::AuthStore::from_env();
+            let configured: Vec<&str> = auth.providers();
+            if configured.is_empty() {
+                warnings.push("no credentials configured in environment".into());
+            } else {
+                println!("  Credentials configured for: {}", configured.join(", "));
+            }
+
+            // 6. Check audit ledger if present
+            let ledger_path = std::path::Path::new("audit.jsonl");
+            if ledger_path.exists() {
+                match hub_policy::AuditLedger::verify(ledger_path) {
+                    Ok(count) => println!("  Audit ledger: {count} entries, chain intact"),
+                    Err(e) => errors.push(format!("audit ledger verification failed: {e}")),
+                }
+            }
+
+            // Report
+            println!();
+            if !warnings.is_empty() {
+                for w in &warnings {
+                    eprintln!("  WARN: {w}");
+                }
+            }
+            if !errors.is_empty() {
+                for e in &errors {
+                    eprintln!("  ERROR: {e}");
+                }
+                eprintln!("\nValidation failed with {} error(s).", errors.len());
+                std::process::exit(1);
+            }
+
             println!("Validation passed.");
         }
     }
