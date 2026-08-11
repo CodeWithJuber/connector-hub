@@ -1,15 +1,14 @@
 import json
 import os
-from pathlib import Path
+import random
 import tempfile
 import time
-import random
 import unittest
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from hub.plugins import PluginLoader, PluginValidationError, validate_manifest
-
 
 BASE = {
     "api_version": "connector-hub.plugin/v1",
@@ -80,11 +79,16 @@ class LoaderTests(unittest.TestCase):
             outside.rmdir()
 
 
-@unittest.skipUnless(os.environ.get("RUN_INTEGRATION") == "1", "set RUN_INTEGRATION=1 for GitHub verification")
+@unittest.skipUnless(
+    os.environ.get("RUN_INTEGRATION") == "1", "set RUN_INTEGRATION=1 for GitHub verification"
+)
 class UpstreamIntegrationTests(unittest.TestCase):
     def test_hikmah_pinned_commit_exists(self):
         url = "https://api.github.com/repos/hikmahlabs/plugins/commits/f028fb87ecb64de0e284b3b233150da41d938ebf"
-        request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "connector-hub-tests"})
+        request = urllib.request.Request(
+            url,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "connector-hub-tests"},
+        )
         payload = None
         for attempt in range(3):
             try:
@@ -94,7 +98,7 @@ class UpstreamIntegrationTests(unittest.TestCase):
             except (urllib.error.URLError, TimeoutError):
                 if attempt == 2:
                     raise
-                time.sleep((0.25 * (2 ** attempt)) + random.uniform(0, 0.1))
+                time.sleep((0.25 * (2**attempt)) + random.uniform(0, 0.1))
         self.assertIsInstance(payload, dict)
         self.assertEqual(payload.get("sha"), "f028fb87ecb64de0e284b3b233150da41d938ebf")
 

@@ -1,22 +1,4 @@
 """MCP SDK based stdio server for the validated connector action registry."""
-"""Minimal stdio MCP server exposing every connector as tools.
-
-Framing: LSP-style 'Content-Length: N\\r\\n\\r\n{json}' per message.
-Tools:
-  - hub_channels            -> list channels + live/mock mode
-  - hub_status              -> {channel}
-  - hub_call                -> {channel, action, params, dry_run, authorization}
-This keeps the MCP surface stable even as connectors are added.
-"""
-
-import json
-import sys
-
-from pydantic import ValidationError
-
-from . import get_connector, list_connectors, load_connectors
-from .schema import ConnectorRequest, JsonRpcRequest
-from .schemas import action_json_schema
 
 from __future__ import annotations
 
@@ -26,11 +8,13 @@ import logging
 import os
 import re
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 
 import anyio
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool, ToolAnnotations
@@ -48,19 +32,6 @@ _ACTION_SCHEMAS: dict[tuple[str, str], dict[str, Any]] = {
             "messages": {"type": "array", "items": {"type": "object"}},
             "model": {"type": "string"},
             "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-TOOLS = [
-    {
-        "name": "hub_channels",
-        "description": "List every connector channel. Use hub_status for configuration and action safety metadata.",
-        "inputSchema": {"type": "object", "properties": {}},
-    },
-    {
-        "name": "hub_status",
-        "description": "Status of one channel, including missing configuration and per-action read-only, mutating, destructive, dry-run, and confirmation policies.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {"channel": {"type": "string"}},
-            "required": ["channel"],
         },
         "required": ["messages"],
         "additionalProperties": True,
@@ -68,73 +39,15 @@ TOOLS = [
     ("openai", "embeddings"): {
         "type": "object",
         "properties": {
-            "input": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
-            "model": {"type": "string"},
-    {
-        "name": "hub_call",
-        "description": (
-            "Call an action. Inspect ok, executed, and state: succeeded means real "
-            "execution; dry_run means no execution; configuration_required and "
-            "upstream_failure are typed failures. Destructive actions require the "
-            "confirmation token shown by hub_status conventions or policy approval."
-        ),
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "channel": {"type": "string"},
-                "action": {"type": "string"},
-                "params": {"type": "object"},
-                "dry_run": {
-                    "type": "boolean",
-                    "description": "Preview a dry-run-capable action without performing it.",
-                },
-                "confirmation_token": {
-                    "type": "string",
-                    "description": "For destructive actions: CONFIRM:<channel>:<action>.",
-                },
-                "policy_approved": {
-                    "type": "boolean",
-                    "description": "True only when an external policy engine approved the destructive action.",
-                },
+            "input": {
+                "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
             },
-            "required": ["channel", "action"],
+            "model": {"type": "string"},
         },
         "required": ["input"],
         "additionalProperties": True,
     },
 }
-]
-
-
-def _tools():
-    """Build MCP schemas directly from the Pydantic action request models."""
-    tools = list(TOOLS)
-    for channel in list_connectors():
-        conn = get_connector(channel)
-        for action in conn.actions():
-            tools.append({
-                "name": f"{channel}__{action}",
-                "description": f"Run {action} on the {channel} connector",
-                "inputSchema": action_json_schema(conn, action),
-            })
-    return tools
-
-
-def _read_message():
-    headers = {}
-    while True:
-        line = sys.stdin.buffer.readline()
-        if not line:
-            return None
-        line = line.strip()
-        if not line:
-            break
-        k, _, v = line.partition(b":")
-        headers[k.strip().lower()] = v.strip()
-    length = int(headers.get(b"content-length", 0))
-    if not length:
-        return None
-    return json.loads(sys.stdin.buffer.read(length))
 
 
 @dataclass(frozen=True)
@@ -158,53 +71,13 @@ class Action:
 
 def build_action_registry() -> dict[str, Action]:
     """Validate connector/action identifiers and return tools keyed by MCP name."""
-
-def _text(data):
-    return {"content": [{"type": "text", "text": json.dumps(data, indent=2, default=str)}]}
-
-
-def _call_tool(name, args):
-    if name == "hub_channels":
-        return _text({n: {"description": d} for n, d in list_connectors().items()})
-    if name == "hub_status":
-        return _text(get_connector(args["channel"]).status())
-    if name == "hub_call":
-        conn = get_connector(args["channel"])
-        params = dict(args.get("params") or {})
-        for option in ("dry_run", "confirmation_token", "policy_approved"):
-            if option in args:
-                params[option] = args[option]
-        return _text(conn.call(args["action"], **params))
-        return _text(conn.call(args["action"], **(args.get("params") or {})))
-    if "__" in name:
-        channel, action = name.split("__", 1)
-        return _text(get_connector(channel).call(action, **args))
-    raise ValueError(f"unknown tool {name}")
-
-
-def serve():
     load_connectors()
-    while True:
-        raw_msg = _read_message()
-        if raw_msg is None:
-            break
-        try:
-            msg = JsonRpcRequest.model_validate(raw_msg).model_dump()
-        except ValidationError as exc:
-            _error(
-                raw_msg.get("id") if isinstance(raw_msg, dict) else None,
-                -32600,
-                f"invalid request: {exc.errors(include_url=False)}",
-            )
-            continue
-        method = msg.get("method", "")
-        msg_id = msg.get("id")
     registry: dict[str, Action] = {}
     for connector in list_connectors():
         if not _SAFE_NAME.fullmatch(connector):
             raise RuntimeError(f"invalid connector identifier: {connector!r}")
         actions = get_connector(connector).actions()
-        if not isinstance(actions, (list, tuple)) or not actions:
+        if not isinstance(actions, list | tuple) or not actions:
             raise RuntimeError(f"connector {connector!r} has no validated actions")
         for name in actions:
             if not isinstance(name, str) or not _SAFE_NAME.fullmatch(name):
@@ -252,7 +125,7 @@ def _classify(exc: BaseException) -> tuple[str, str]:
         return "authentication", "Connector authentication failed."
     if "policy" in text or "not allowed" in text or "forbidden" in text:
         return "policy", "The call was denied by connector policy."
-    if isinstance(exc, (TypeError, ValueError)) or "requires" in text or "required" in text:
+    if isinstance(exc, TypeError | ValueError) or "requires" in text or "required" in text:
         return "validation", "The connector rejected the supplied arguments."
     if isinstance(exc, ConnectorError):
         return "upstream", "The upstream connector request failed."
@@ -351,29 +224,34 @@ def serve() -> None:
         anyio.run(serve_async)
     except KeyboardInterrupt:
         LOG.info("server_shutdown")
-            if method == "initialize":
-                _result(
-                    msg_id,
-                    {
-                        "protocolVersion": PROTOCOL_VERSION,
-                        "capabilities": {"tools": {}},
-                        "serverInfo": {"name": "omni-connector-hub", "version": "1.0.0"},
-                    },
-                )
-            elif method == "notifications/initialized":
-                continue
-            elif method == "tools/list":
-                _result(msg_id, {"tools": _tools()})
-            elif method == "tools/call":
-                p = msg.get("params", {})
-                args = p.get("arguments") or {}
-                if p.get("name") == "hub_call":
-                    args = ConnectorRequest.model_validate(args).model_dump()
-                _result(msg_id, _call_tool(p.get("name"), args))
-            elif method == "ping":
-                _result(msg_id, {})
-            elif msg_id is not None:
-                _error(msg_id, -32601, f"method not found: {method}")
-        except Exception as e:  # never crash the server loop
-            if msg_id is not None:
-                _error(msg_id, -32000, str(e))
+
+
+# Compatibility helpers retained for callers of the original synchronous adapter.
+def _text(data: Any) -> dict[str, list[dict[str, str]]]:
+    """Serialize a value in the MCP text-content envelope."""
+    return {"content": [{"type": "text", "text": json.dumps(data, default=str)}]}
+
+
+def _call_tool(name: str, arguments: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    """Reject legacy synchronous dispatch and direct callers to the SDK server."""
+    del arguments
+    raise ValueError(f"unknown tool: {name}; use create_server() for MCP dispatch")
+
+
+def _tools() -> list[dict[str, Any]]:
+    """Return strict action schemas for legacy discovery clients."""
+    from .schemas import action_json_schema
+
+    tools: list[dict[str, Any]] = []
+    load_connectors()
+    for channel in list_connectors():
+        connector = get_connector(channel)
+        for action in connector.actions():
+            tools.append(
+                {
+                    "name": f"{channel}__{action}",
+                    "description": f"Run {action} on the {channel} connector",
+                    "inputSchema": action_json_schema(connector, action),
+                }
+            )
+    return tools

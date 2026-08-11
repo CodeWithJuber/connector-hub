@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible Connector Hub defect.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never include credentials, tokens, private URLs, or customer data.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest safe sequence of commands and redacted output.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Uses an external integration?
+      options: ["No", "Yes"]
+    validations:
+      required: true

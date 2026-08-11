@@ -4,6 +4,7 @@ The module intentionally uses only the Python standard library.  A deployment
 can pass ``config={"security": ...}`` to a connector or set
 ``HUB_SECURITY_POLICY`` to an equivalent JSON object.
 """
+
 import http.client
 import ipaddress
 import json
@@ -13,8 +14,8 @@ import re
 import socket
 import ssl
 import subprocess
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 LOG = logging.getLogger("hub.security")
@@ -24,7 +25,9 @@ class SecurityError(ValueError):
     """A request was rejected by deployment security policy."""
 
 
-_SECRET = re.compile(r"(?i)(authorization|cookie|token|secret|password|passwd|api[-_]?key)(\s*[:=]\s*)([^\s,;]+)")
+_SECRET = re.compile(
+    r"(?i)(authorization|cookie|token|secret|password|passwd|api[-_]?key)(\s*[:=]\s*)([^\s,;]+)"
+)
 _METADATA_HOSTS = {"metadata.google.internal", "metadata.azure.internal"}
 _METADATA_IPS = {ipaddress.ip_address("169.254.169.254"), ipaddress.ip_address("169.254.170.2")}
 
@@ -72,8 +75,7 @@ class SecurityPolicy:
             raise SecurityError(f"security.plugins.{name} must be an object")
         return value
 
-    def require_capability(self, plugin, capability, action=None, approval=None,
-                           destructive=False):
+    def require_capability(self, plugin, capability, action=None, approval=None, destructive=False):
         cfg = self.plugin(plugin)
         if capability not in cfg.get("capabilities", []):
             raise SecurityError(f"{plugin}: capability '{capability}' is not enabled")
@@ -85,8 +87,12 @@ class SecurityPolicy:
                 raise SecurityError(
                     f"{plugin}: destructive action '{action}' requires explicit policy and approval"
                 )
-            LOG.info("security_authorization_granted plugin=%s action=%s approval=%s",
-                     plugin, action, approval)
+            LOG.info(
+                "security_authorization_granted plugin=%s action=%s approval=%s",
+                plugin,
+                action,
+                approval,
+            )
 
     @staticmethod
     def _public_address(raw):
@@ -96,9 +102,16 @@ class SecurityPolicy:
             raise SecurityError(f"resolver returned invalid IP address: {raw}") from exc
         if address in _METADATA_IPS:
             raise SecurityError("cloud metadata endpoints are blocked")
-        if not address.is_global or any((address.is_loopback, address.is_link_local,
-                                         address.is_private, address.is_multicast,
-                                         address.is_reserved, address.is_unspecified)):
+        if not address.is_global or any(
+            (
+                address.is_loopback,
+                address.is_link_local,
+                address.is_private,
+                address.is_multicast,
+                address.is_reserved,
+                address.is_unspecified,
+            )
+        ):
             raise SecurityError(f"non-public address is blocked: {address}")
         return str(address)
 
@@ -154,8 +167,7 @@ class _PinnedHTTPSConnection(_PinnedHTTPConnection):
         )
 
 
-def pinned_urlopen(policy, url, method="GET", headers=None, timeout=30,
-                   max_bytes=None):
+def pinned_urlopen(policy, url, method="GET", headers=None, timeout=30, max_bytes=None):
     """Open a URL while validating each redirect and pinning its resolved IP."""
     current = url
     for redirects in range(policy.max_redirects + 1):
@@ -188,19 +200,33 @@ def pinned_urlopen(policy, url, method="GET", headers=None, timeout=30,
     raise SecurityError("redirect limit exceeded")
 
 
-def bounded_run(argv: Sequence[str], timeout: int, max_output: int,
-                secrets=(), env: Optional[Mapping[str, str]] = None):
+def bounded_run(
+    argv: Sequence[str],
+    timeout: int,
+    max_output: int,
+    secrets=(),
+    env: Mapping[str, str] | None = None,
+):
     """Execute an argv (never a shell), enforcing timeout and output bounds."""
-    if not isinstance(argv, (list, tuple)) or not argv or not all(isinstance(x, str) for x in argv):
+    if not isinstance(argv, list | tuple) or not argv or not all(isinstance(x, str) for x in argv):
         raise SecurityError("command must be a non-empty string argument vector")
     try:
-        proc = subprocess.run(list(argv), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, timeout=timeout, env=dict(env) if env else None)
+        proc = subprocess.run(
+            list(argv),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=timeout,
+            env=dict(env) if env else None,
+        )
     except subprocess.TimeoutExpired as exc:
         raise SecurityError(f"command timed out after {timeout}s") from exc
     stdout = proc.stdout[:max_output].decode("utf-8", "replace")
     remaining = max(0, max_output - len(proc.stdout[:max_output]))
     stderr = proc.stderr[:remaining].decode("utf-8", "replace")
     truncated = len(proc.stdout) + len(proc.stderr) > max_output
-    return {"returncode": proc.returncode, "stdout": redact(stdout, secrets),
-            "stderr": redact(stderr, secrets), "truncated": truncated}
+    return {
+        "returncode": proc.returncode,
+        "stdout": redact(stdout, secrets),
+        "stderr": redact(stderr, secrets),
+        "truncated": truncated,
+    }

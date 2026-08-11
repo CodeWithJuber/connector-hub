@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-SCRIPT = Path(__file__).parents[1] / ".agents/plugins/plugins/connector-hub/scripts/sync_upstreams.py"
+SCRIPT = (
+    Path(__file__).parents[1] / ".agents/plugins/plugins/connector-hub/scripts/sync_upstreams.py"
+)
 SPEC = importlib.util.spec_from_file_location("sync_upstreams", SCRIPT)
 assert SPEC and SPEC.loader
 sync_upstreams = importlib.util.module_from_spec(SPEC)

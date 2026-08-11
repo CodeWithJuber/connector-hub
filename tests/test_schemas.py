@@ -17,7 +17,9 @@ def test_every_action_has_strict_mcp_schema():
     for channel in ("hetzner", "github", "ops_network"):
         conn = get_connector(channel)
         for action in conn.actions():
-            assert action_tools[f"{channel}__{action}"]["inputSchema"]["additionalProperties"] is False
+            assert (
+                action_tools[f"{channel}__{action}"]["inputSchema"]["additionalProperties"] is False
+            )
 
 
 def test_required_and_unknown_fields_rejected_before_mock_operation():
@@ -30,12 +32,14 @@ def test_required_and_unknown_fields_rejected_before_mock_operation():
 
 def test_ranges_and_formats():
     with pytest.raises(ValidationError):
-        validate_action(get_connector("ops_network"), "port_check", {"host": "example.com", "ports": "invalid"})
+        validate_action(
+            get_connector("ops_network"), "port_check", {"host": "example.com", "ports": "invalid"}
+        )
     with pytest.raises(ValidationError):
         validate_action(get_connector("ops_browser"), "fetch", {"url": "not a URL"})
 
 
 def test_schema_secret_is_redactable():
-    conn = get_connector("email")
+    get_connector("email")
     schema = next(t for t in _tools() if t["name"] == "email__send_email")["inputSchema"]
     assert schema["properties"]["body"]["format"] == "password"

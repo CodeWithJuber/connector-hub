@@ -1,11 +1,10 @@
-import os
 import sys
 import unittest
 from unittest import mock
 
+from connectors.ops.ssh_bash import OpsSshConnector
 from hub.base import ConnectorError
 from hub.security import SecurityError, SecurityPolicy, bounded_run, pinned_urlopen, redact
-from connectors.ops.ssh_bash import OpsSshConnector
 
 
 def addr(ip):
@@ -88,7 +87,9 @@ class SecurityPolicyTests(unittest.TestCase):
     def test_bounded_output_and_secret_redaction(self):
         result = bounded_run(
             [sys.executable, "-c", "print('token=supersecret');print('x'*1000)"],
-            timeout=2, max_output=80, secrets=("supersecret",),
+            timeout=2,
+            max_output=80,
+            secrets=("supersecret",),
         )
         self.assertTrue(result["truncated"])
         self.assertNotIn("supersecret", result["stdout"])
@@ -104,16 +105,20 @@ class SecurityPolicyTests(unittest.TestCase):
 
 class ExecutionPolicyTests(unittest.TestCase):
     def config(self):
-        return {"security": {
-            "approvals": ["ticket-123"],
-            "plugins": {"ops_ssh": {
-                "capabilities": ["local_exec"],
-                "destructive_actions": ["echo"],
-                "local_actions": {"echo": {
-                    "executable": "/bin/echo", "arg_pattern": r"^[A-Za-z0-9_-]+$"
-                }},
-            }},
-        }}
+        return {
+            "security": {
+                "approvals": ["ticket-123"],
+                "plugins": {
+                    "ops_ssh": {
+                        "capabilities": ["local_exec"],
+                        "destructive_actions": ["echo"],
+                        "local_actions": {
+                            "echo": {"executable": "/bin/echo", "arg_pattern": r"^[A-Za-z0-9_-]+$"}
+                        },
+                    }
+                },
+            }
+        }
 
     def test_execution_needs_explicit_approval(self):
         connector = OpsSshConnector(self.config())
@@ -124,8 +129,9 @@ class ExecutionPolicyTests(unittest.TestCase):
         connector = OpsSshConnector(self.config())
         for argument in ("hello;id", "$(id)", "hello && id", "`id`"):
             with self.assertRaisesRegex(ConnectorError, "disallowed"):
-                connector.call("run_local", action_id="echo", args=[argument],
-                               approval="ticket-123")
+                connector.call(
+                    "run_local", action_id="echo", args=[argument], approval="ticket-123"
+                )
 
     def test_allowlisted_argv_executes_without_shell(self):
         result = OpsSshConnector(self.config()).call(

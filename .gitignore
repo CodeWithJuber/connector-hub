@@ -4,3 +4,11 @@ __pycache__/
 .pytest_cache/
 .vendor/
 vendor-manifest.json
+.venv/
+dist/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/

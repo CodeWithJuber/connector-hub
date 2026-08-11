@@ -4,13 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omni-connector-hub"
-version = "1.1.0"
-description = "A typed stdio MCP gateway for service connectors"
+version = "2.0.0"
+description = "A validated, observable MCP gateway for service connectors"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = { text = "MIT" }
 authors = [{ name = "Omni Connector Hub maintainers" }]
-dependencies = ["pydantic==2.12.5"]
+dependencies = [
+  "httpx==0.28.1",
+  "mcp==1.29.0",
+  "pydantic==2.13.4",
+  "structlog==26.1.0",
+]
 
 [project.scripts]
 connector-hub = "hub.gateway:main"
@@ -21,7 +26,8 @@ dev = [
   "build==1.3.0",
   "mypy==1.17.1",
   "pip-audit==2.9.0",
-  "pytest==9.0.3",
+  "pytest==8.4.2",
+  "pytest-httpx==0.35.0",
   "pytest-timeout==2.4.0",
   "ruff==0.12.8",
 ]
@@ -32,7 +38,7 @@ packages = ["hub", "connectors"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-exclude = ["verifier", "connectors", "scripts"]
+exclude = ["verifier", "connectors", "scripts", "vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S"]
@@ -55,57 +61,3 @@ markers = [
   "integration: opt-in tests that contact documented provider endpoints",
   "credentialed: integration tests requiring protected credentials",
 ]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "omni-connector-hub"
-version = "2.0.0"
-requires-python = ">=3.10"
-dependencies = [
-  "mcp==1.29.0",
-]
-
-[project.optional-dependencies]
-test = [
-  "pytest==8.4.1",
-  "pytest-anyio==0.0.0",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-version = "1.0.0"
-description = "A stdlib-first MCP gateway for service connectors"
-readme = "README.md"
-requires-python = ">=3.10"
-license = {text = "MIT"}
-authors = [{name = "Connector Hub contributors"}]
-dependencies = []
-
-[project.scripts]
-connector-hub = "hub.gateway:main"
-requires = ["setuptools==80.9.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "connector-hub"
-version = "2.0.0"
-description = "Validated, observable connector gateway"
-requires-python = ">=3.11,<3.15"
-dependencies = [
-  "httpx==0.28.1",
-  "mcp==1.29.0",
-  "pydantic==2.13.4",
-  "structlog==26.1.0",
-]
-
-[project.optional-dependencies]
-test = ["pytest==8.4.2", "pytest-httpx==0.35.0"]
-
-[tool.setuptools.packages.find]
-include = ["hub*", "connectors*"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-ra"
