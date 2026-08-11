@@ -111,9 +111,7 @@ async def test_client_cancellation_terminates_call() -> None:
         async with ClientSession(*streams) as client:
             await client.initialize()
             with anyio.move_on_after(0.001) as scope:
-                await client.call_tool(
-                    "hub__ops_network__ping", {"host": "192.0.2.1", "count": 5}
-                )
+                await client.call_tool("hub__ops_network__ping", {"host": "192.0.2.1", "count": 5})
             assert scope.cancel_called
 
 
