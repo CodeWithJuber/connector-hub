@@ -36,8 +36,7 @@ jobs:
         run: cargo test --workspace
         working-directory: crates
       - name: Validate installation
-        run: cargo run -- validate
-        working-directory: .
+        run: cargo run --manifest-path crates/Cargo.toml -- validate
 
   manifests:
     name: Manifest version parity
