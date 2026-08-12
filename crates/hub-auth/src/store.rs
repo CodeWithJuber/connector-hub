@@ -572,6 +572,48 @@ impl AuthStore {
             });
         }
 
+        // iHerb Partnerize (affiliate network)
+        if let (Ok(app_key), Ok(user_key)) = (
+            std::env::var("IHERB_PARTNERIZE_APP_KEY"),
+            std::env::var("IHERB_PARTNERIZE_USER_KEY"),
+        ) {
+            store.add(Credential {
+                provider: "iherb_partnerize".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.partnerize.com/v3".into()),
+                auth: AuthMethod::Basic {
+                    username: app_key,
+                    password: user_key,
+                },
+            });
+        }
+
+        // iHerb Impact (affiliate network)
+        if let (Ok(account_sid), Ok(auth_token)) = (
+            std::env::var("IHERB_IMPACT_ACCOUNT_SID"),
+            std::env::var("IHERB_IMPACT_AUTH_TOKEN"),
+        ) {
+            store.add(Credential {
+                provider: "iherb_impact".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.impact.com".into()),
+                auth: AuthMethod::Basic {
+                    username: account_sid,
+                    password: auth_token,
+                },
+            });
+        }
+
+        // iHerb Apify scraper
+        if let Ok(token) = std::env::var("IHERB_APIFY_TOKEN") {
+            store.add(Credential {
+                provider: "iherb_apify".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.apify.com/v2".into()),
+                auth: AuthMethod::Bearer { token },
+            });
+        }
+
         // SMTP email accounts: EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_SMTP_USER,
         // EMAIL_SMTP_PASS, EMAIL_SMTP_FROM, EMAIL_SMTP_TLS for default account.
         // EMAIL_SMTP_HOST_<LABEL> etc. for named accounts.

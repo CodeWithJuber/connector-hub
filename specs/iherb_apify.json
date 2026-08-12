@@ -1,0 +1,242 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "iHerb Apify Scraper API",
+    "version": "1.0.0",
+    "description": "Apify actor API for the iHerb scraper. Provides product search, product details, reviews, and price monitoring via the Apify platform."
+  },
+  "servers": [
+    { "url": "https://api.apify.com/v2" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Apify API token as Bearer token"
+      }
+    }
+  },
+  "paths": {
+    "/acts/vaunted~iherb-scraper/runs?action=search": {
+      "post": {
+        "operationId": "run_search",
+        "summary": "Search iHerb products",
+        "description": "Starts an Apify actor run to search iHerb products by keyword. Returns a run object with an ID to poll for results.",
+        "tags": ["scraper"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["search"],
+                "properties": {
+                  "search": {
+                    "type": "string",
+                    "description": "Search keyword or phrase (e.g. 'vitamin D', 'omega 3')"
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "default": 50,
+                    "description": "Maximum number of products to return"
+                  },
+                  "sort": {
+                    "type": "string",
+                    "enum": ["relevance", "best_selling", "price_asc", "price_desc", "rating", "newest"],
+                    "description": "Sort order for search results"
+                  },
+                  "country": {
+                    "type": "string",
+                    "default": "US",
+                    "description": "Country code for localized pricing and availability"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acts/vaunted~iherb-scraper/runs?action=details": {
+      "post": {
+        "operationId": "run_product_details",
+        "summary": "Get iHerb product details",
+        "description": "Starts an Apify actor run to scrape full product information from iHerb product URLs.",
+        "tags": ["scraper"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["urls"],
+                "properties": {
+                  "urls": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "List of iHerb product URLs to scrape"
+                  },
+                  "country": {
+                    "type": "string",
+                    "default": "US",
+                    "description": "Country code for localized pricing"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acts/vaunted~iherb-scraper/runs?action=reviews": {
+      "post": {
+        "operationId": "run_reviews",
+        "summary": "Scrape iHerb product reviews",
+        "description": "Starts an Apify actor run to collect product reviews from iHerb, including ratings, text, and reviewer info.",
+        "tags": ["scraper"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productUrl"],
+                "properties": {
+                  "productUrl": {
+                    "type": "string",
+                    "description": "iHerb product URL to scrape reviews from"
+                  },
+                  "maxReviews": {
+                    "type": "integer",
+                    "default": 100,
+                    "description": "Maximum number of reviews to collect"
+                  },
+                  "sort": {
+                    "type": "string",
+                    "enum": ["newest", "oldest", "highest_rating", "lowest_rating", "most_helpful"],
+                    "description": "Sort order for reviews"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acts/vaunted~iherb-scraper/runs?action=price_monitor": {
+      "post": {
+        "operationId": "run_price_monitor",
+        "summary": "Monitor iHerb product prices",
+        "description": "Starts an Apify actor run to track and record current prices for specified iHerb products.",
+        "tags": ["scraper"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["urls"],
+                "properties": {
+                  "urls": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "List of iHerb product URLs to monitor prices for"
+                  },
+                  "country": {
+                    "type": "string",
+                    "default": "US",
+                    "description": "Country code for localized pricing"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/acts/vaunted~iherb-scraper/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run",
+        "summary": "Get scraper run status",
+        "description": "Returns the status and metadata of a specific actor run, including whether it has finished and the default dataset ID for results.",
+        "tags": ["runs"],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Actor run ID"
+          }
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/items": {
+      "get": {
+        "operationId": "get_dataset_items",
+        "summary": "Get scraper run results",
+        "description": "Returns the scraped data items from a completed actor run's dataset. Use the dataset ID from the run status response.",
+        "tags": ["runs"],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Dataset ID from the actor run"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["json", "csv", "xlsx"], "default": "json" },
+            "description": "Output format for the dataset items"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer" },
+            "description": "Maximum number of items to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Number of items to skip"
+          }
+        ]
+      }
+    },
+    "/acts/vaunted~iherb-scraper/runs": {
+      "get": {
+        "operationId": "list_runs",
+        "summary": "List past scraper runs",
+        "description": "Returns a list of past actor runs with their statuses, start times, and dataset IDs.",
+        "tags": ["runs"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 },
+            "description": "Maximum number of runs to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Number of runs to skip"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["READY", "RUNNING", "SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"] },
+            "description": "Filter runs by status"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # Omni Connector Hub
 
 One hub for AI providers, email, hosting panels, VPS clouds, chat, GitHub, and
-server operations — 21 providers, 278 operations, behind one type-safe
+server operations — 24 providers, 301 operations, behind one type-safe
 interface with a hash-chained audit ledger.
 
 ## Providers
@@ -18,6 +18,9 @@ interface with a hash-chained audit ledger.
 | `github` | 25 | 2 | `GITHUB_TOKEN` | hand-written |
 | `gmail` | 79 | 15 | `GOOGLE_CLIENT_ID/SECRET` + refresh tokens | Google Discovery |
 | `hetzner` | 72 | 11 | `HETZNER_API_TOKEN` | OpenAPI 3.0.3 |
+| `iherb_apify` | 7 | 0 | `IHERB_APIFY_TOKEN` | hand-written |
+| `iherb_impact` | 8 | 0 | `IHERB_IMPACT_ACCOUNT_SID` + `IHERB_IMPACT_AUTH_TOKEN` | hand-written |
+| `iherb_partnerize` | 8 | 0 | `IHERB_PARTNERIZE_APP_KEY` + `IHERB_PARTNERIZE_USER_KEY` | hand-written |
 | `kimi` | 2 | 0 | `MOONSHOT_API_KEY` | hand-written |
 | `linode` | 9 | 1 | `LINODE_API_TOKEN` | hand-written |
 | `oneprovider` | 6 | 0 | `ONEPROVIDER_API_KEY` | hand-written |
@@ -32,7 +35,7 @@ interface with a hash-chained audit ledger.
 | `whm` | 9 | 1 | `WHM_HOST` + root token | hand-written |
 | `whmcs` | 9 | 0 | `WHMCS_URL` + API identifier/secret | hand-written |
 
-**Total: 278 operations (32 destructive)**
+**Total: 301 operations (32 destructive)**
 
 ## Quick start
 
