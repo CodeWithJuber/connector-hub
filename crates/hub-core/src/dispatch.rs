@@ -77,7 +77,7 @@ impl Dispatcher {
         let url = if path.starts_with("http://") || path.starts_with("https://") {
             path
         } else {
-            format!("{}{}", resolved.base_url.trim_end_matches('/'), &path)
+            format!("{}{}", resolved.base_url.trim_end_matches('/'), path)
         };
 
         let response = net
