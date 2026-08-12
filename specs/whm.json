@@ -1,0 +1,159 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WHM API",
+    "version": "1.0.0",
+    "description": "WebHost Manager (WHM) JSON API for managing cPanel hosting accounts, packages, DNS zones, and server status."
+  },
+  "servers": [
+    { "url": "https://localhost:2087" }
+  ],
+  "security": [
+    { "TokenAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "TokenAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "paths": {
+    "/json-api/listaccts": {
+      "get": {
+        "operationId": "list_accounts",
+        "summary": "List all cPanel accounts on the server",
+        "description": "Returns a list of all cPanel accounts with their details including domain, owner, plan, disk usage, and status.",
+        "tags": ["hosting", "whm"]
+      }
+    },
+    "/json-api/createacct": {
+      "post": {
+        "operationId": "create_account",
+        "summary": "Create a new cPanel account",
+        "description": "Provisions a new cPanel hosting account with the specified domain, username, and optional plan.",
+        "tags": ["hosting", "whm"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["domain", "username", "password"],
+                "properties": {
+                  "domain": { "type": "string", "description": "Primary domain for the new account" },
+                  "username": { "type": "string", "description": "cPanel username (max 8 characters)" },
+                  "password": { "type": "string", "description": "Password for the new account" },
+                  "plan": { "type": "string", "description": "Hosting package/plan name" },
+                  "contactemail": { "type": "string", "description": "Contact email address for the account owner" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/json-api/suspendacct": {
+      "post": {
+        "operationId": "suspend_account",
+        "summary": "Suspend a cPanel account",
+        "description": "Suspends the specified cPanel account, disabling access to the website and cPanel interface.",
+        "tags": ["hosting", "whm"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user"],
+                "properties": {
+                  "user": { "type": "string", "description": "cPanel username to suspend" },
+                  "reason": { "type": "string", "description": "Reason for suspension" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/json-api/unsuspendacct": {
+      "post": {
+        "operationId": "unsuspend_account",
+        "summary": "Unsuspend a cPanel account",
+        "description": "Reactivates a previously suspended cPanel account.",
+        "tags": ["hosting", "whm"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user"],
+                "properties": {
+                  "user": { "type": "string", "description": "cPanel username to unsuspend" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/json-api/removeacct": {
+      "post": {
+        "operationId": "terminate_account",
+        "summary": "Terminate and remove a cPanel account",
+        "description": "Permanently removes a cPanel account and all its data from the server.",
+        "tags": ["hosting", "whm"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user"],
+                "properties": {
+                  "user": { "type": "string", "description": "cPanel username to terminate" },
+                  "keepdns": { "type": "boolean", "description": "If true, keep DNS zone files after account removal" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/json-api/listpkgs": {
+      "get": {
+        "operationId": "list_packages",
+        "summary": "List all hosting packages",
+        "description": "Returns a list of all hosting packages (plans) configured on the server.",
+        "tags": ["hosting", "whm"]
+      }
+    },
+    "/json-api/servicestatus": {
+      "get": {
+        "operationId": "server_status",
+        "summary": "Get server service status",
+        "description": "Returns the running status of all monitored services on the server (Apache, MySQL, etc.).",
+        "tags": ["hosting", "whm"]
+      }
+    },
+    "/json-api/listzones": {
+      "get": {
+        "operationId": "list_zones",
+        "summary": "List all DNS zones",
+        "description": "Returns a list of all DNS zones hosted on the server.",
+        "tags": ["hosting", "whm"]
+      }
+    },
+    "/json-api/version": {
+      "get": {
+        "operationId": "version",
+        "summary": "Get WHM version",
+        "description": "Returns the WHM and cPanel version information.",
+        "tags": ["hosting", "whm"]
+      }
+    }
+  }
+}

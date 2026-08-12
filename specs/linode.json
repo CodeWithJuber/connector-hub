@@ -1,0 +1,130 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Linode API",
+    "version": "1.0.0",
+    "description": "Manage Linode cloud instances: create, boot, shutdown, reboot, and delete Linodes, and list available regions and instance types."
+  },
+  "servers": [
+    { "url": "https://api.linode.com/v4" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/linode/instances": {
+      "get": {
+        "operationId": "list_linodes",
+        "summary": "List all Linode instances",
+        "tags": ["cloud", "compute"]
+      },
+      "post": {
+        "operationId": "create_linode",
+        "summary": "Create a new Linode instance",
+        "tags": ["cloud", "compute"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["region", "type", "image", "root_pass"],
+                "properties": {
+                  "region": { "type": "string", "description": "Region to deploy the Linode in" },
+                  "type": { "type": "string", "description": "Linode plan type" },
+                  "image": { "type": "string", "description": "Image ID to deploy" },
+                  "root_pass": { "type": "string", "description": "Root password for the Linode" },
+                  "label": { "type": "string", "description": "Label for the Linode" },
+                  "authorized_keys": { "type": "array", "items": { "type": "string" }, "description": "SSH public keys to install" },
+                  "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for categorization" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/linode/instances/{id}": {
+      "get": {
+        "operationId": "get_linode",
+        "summary": "Get details for a specific Linode instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_linode",
+        "summary": "Delete a Linode instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/linode/instances/{id}/boot": {
+      "post": {
+        "operationId": "boot",
+        "summary": "Boot a Linode instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "config_id": { "type": "integer", "description": "Optional configuration profile ID to boot with" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/linode/instances/{id}/shutdown": {
+      "post": {
+        "operationId": "shutdown",
+        "summary": "Shutdown a Linode instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/linode/instances/{id}/reboot": {
+      "post": {
+        "operationId": "reboot",
+        "summary": "Reboot a Linode instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/regions": {
+      "get": {
+        "operationId": "list_regions",
+        "summary": "List available regions",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/linode/types": {
+      "get": {
+        "operationId": "list_types",
+        "summary": "List available Linode instance types (plans)",
+        "tags": ["cloud", "compute"]
+      }
+    }
+  }
+}

@@ -1,0 +1,527 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GitHub API",
+    "version": "1.0.0",
+    "description": "GitHub REST API for managing repositories, issues, pull requests, actions workflows, webhooks, and code search."
+  },
+  "servers": [
+    { "url": "https://api.github.com" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/user": {
+      "get": {
+        "operationId": "get_me",
+        "summary": "Get the authenticated user",
+        "description": "Returns details of the currently authenticated GitHub user.",
+        "tags": ["github", "scm"]
+      }
+    },
+    "/user/repos": {
+      "get": {
+        "operationId": "list_repos",
+        "summary": "List repositories for the authenticated user",
+        "description": "Returns repositories that the authenticated user has access to.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          {
+            "name": "visibility",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["all", "public", "private"] },
+            "description": "Filter by repository visibility"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 30 },
+            "description": "Results per page (max 100)"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "create_repo",
+        "summary": "Create a new repository",
+        "description": "Creates a new repository for the authenticated user.",
+        "tags": ["github", "scm"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "description": "Repository name" },
+                  "private": { "type": "boolean", "description": "Whether the repository is private" },
+                  "description": { "type": "string", "description": "Repository description" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}": {
+      "get": {
+        "operationId": "get_repo",
+        "summary": "Get a repository",
+        "description": "Returns details of a specific repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_repo",
+        "summary": "Delete a repository",
+        "description": "Permanently deletes a repository. Requires admin access.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/repos/{owner}/{repo}/branches": {
+      "get": {
+        "operationId": "list_branches",
+        "summary": "List branches",
+        "description": "Returns all branches in the repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/repos/{owner}/{repo}/git/refs": {
+      "post": {
+        "operationId": "create_branch",
+        "summary": "Create a branch",
+        "description": "Creates a new git reference (branch) in the repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["branch"],
+                "properties": {
+                  "branch": { "type": "string", "description": "New branch name" },
+                  "from_branch": { "type": "string", "description": "Source branch to create from (defaults to default branch)" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/contents/{path}": {
+      "get": {
+        "operationId": "get_file",
+        "summary": "Get file contents",
+        "description": "Returns the contents of a file or directory in a repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "path", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "ref",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Branch, tag, or commit SHA to read from"
+          }
+        ]
+      },
+      "put": {
+        "operationId": "put_file",
+        "summary": "Create or update a file",
+        "description": "Creates or updates a file in the repository. Provide sha to update an existing file.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "path", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content", "message"],
+                "properties": {
+                  "content": { "type": "string", "description": "Base64-encoded file content" },
+                  "message": { "type": "string", "description": "Commit message" },
+                  "branch": { "type": "string", "description": "Branch to commit to" },
+                  "sha": { "type": "string", "description": "SHA of the file being replaced (required for updates)" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_file",
+        "summary": "Delete a file",
+        "description": "Deletes a file from the repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "path", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message", "sha"],
+                "properties": {
+                  "message": { "type": "string", "description": "Commit message for the deletion" },
+                  "sha": { "type": "string", "description": "SHA of the file to delete" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/issues": {
+      "get": {
+        "operationId": "list_issues",
+        "summary": "List repository issues",
+        "description": "Returns issues for a repository, filtered by state.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": { "type": "string", "default": "open", "enum": ["open", "closed", "all"] },
+            "description": "Filter by issue state"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "create_issue",
+        "summary": "Create an issue",
+        "description": "Creates a new issue in the repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string", "description": "Issue title" },
+                  "body": { "type": "string", "description": "Issue body in Markdown" },
+                  "labels": { "type": "array", "items": { "type": "string" }, "description": "Labels to apply" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/issues/{number}/comments": {
+      "post": {
+        "operationId": "comment_issue",
+        "summary": "Add a comment to an issue",
+        "description": "Creates a new comment on an existing issue or pull request.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "number", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": {
+                  "body": { "type": "string", "description": "Comment body in Markdown" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/issues/{number}": {
+      "patch": {
+        "operationId": "close_issue",
+        "summary": "Close an issue",
+        "description": "Closes an open issue by setting its state to closed.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "number", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "state": { "type": "string", "enum": ["closed"], "default": "closed" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/pulls": {
+      "get": {
+        "operationId": "list_prs",
+        "summary": "List pull requests",
+        "description": "Returns pull requests for a repository, filtered by state.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": { "type": "string", "default": "open", "enum": ["open", "closed", "all"] },
+            "description": "Filter by PR state"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "create_pr",
+        "summary": "Create a pull request",
+        "description": "Creates a new pull request from a head branch to a base branch.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "head", "base"],
+                "properties": {
+                  "title": { "type": "string", "description": "Pull request title" },
+                  "head": { "type": "string", "description": "Branch containing the changes" },
+                  "base": { "type": "string", "description": "Branch to merge into" },
+                  "body": { "type": "string", "description": "Pull request description in Markdown" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/pulls/{number}/merge": {
+      "put": {
+        "operationId": "merge_pr",
+        "summary": "Merge a pull request",
+        "description": "Merges a pull request using the specified merge method.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "number", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": { "type": "string", "default": "merge", "enum": ["merge", "squash", "rebase"], "description": "Merge method" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/pulls/{number}/reviews": {
+      "post": {
+        "operationId": "review_pr",
+        "summary": "Create a pull request review",
+        "description": "Submits a review on a pull request (approve, request changes, or comment).",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "number", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "event": { "type": "string", "default": "APPROVE", "enum": ["APPROVE", "REQUEST_CHANGES", "COMMENT"], "description": "Review action" },
+                  "body": { "type": "string", "description": "Review comment body" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/actions/workflows": {
+      "get": {
+        "operationId": "list_workflows",
+        "summary": "List repository workflows",
+        "description": "Returns all GitHub Actions workflows configured in the repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches": {
+      "post": {
+        "operationId": "dispatch_workflow",
+        "summary": "Dispatch a workflow run",
+        "description": "Triggers a workflow_dispatch event to start a workflow run.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "workflow_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Workflow ID or filename" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ref": { "type": "string", "default": "main", "description": "Git ref to run the workflow on" },
+                  "inputs": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Workflow input parameters" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/repos/{owner}/{repo}/actions/runs": {
+      "get": {
+        "operationId": "list_workflow_runs",
+        "summary": "List workflow runs",
+        "description": "Returns all workflow runs for a repository.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/repos/{owner}/{repo}/actions/secrets": {
+      "get": {
+        "operationId": "list_secrets_meta",
+        "summary": "List repository secrets metadata",
+        "description": "Returns metadata (name, created/updated dates) for all repository secrets. Does not return secret values.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/repos/{owner}/{repo}/hooks": {
+      "post": {
+        "operationId": "create_webhook",
+        "summary": "Create a repository webhook",
+        "description": "Creates a webhook that sends HTTP POST payloads to the specified URL on configured events.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          { "name": "owner", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "repo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                  "url": { "type": "string", "description": "Payload delivery URL" },
+                  "events": { "type": "array", "items": { "type": "string" }, "default": ["push"], "description": "Events that trigger the webhook" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search/code": {
+      "get": {
+        "operationId": "search_code",
+        "summary": "Search code across repositories",
+        "description": "Searches for code matching the query across GitHub repositories.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Search query using GitHub code search syntax"
+          }
+        ]
+      }
+    },
+    "/search/repositories": {
+      "get": {
+        "operationId": "search_repos",
+        "summary": "Search repositories",
+        "description": "Searches for repositories matching the query.",
+        "tags": ["github", "scm"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Search query using GitHub search syntax"
+          }
+        ]
+      }
+    }
+  }
+}

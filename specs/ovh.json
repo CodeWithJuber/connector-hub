@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OVH API",
+    "version": "1.0.0",
+    "description": "Manage OVH cloud resources: VPS instances, dedicated servers, IP addresses, and account information."
+  },
+  "servers": [
+    { "url": "https://api.ovh.com/1.0" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/vps": {
+      "get": {
+        "operationId": "list_vps",
+        "summary": "List all VPS instances",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/vps/{name}": {
+      "get": {
+        "operationId": "get_vps",
+        "summary": "Get details of a specific VPS",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/vps/{name}/reboot": {
+      "post": {
+        "operationId": "reboot_vps",
+        "summary": "Reboot a VPS instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/dedicated/server": {
+      "get": {
+        "operationId": "list_dedicated",
+        "summary": "List all dedicated servers",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/dedicated/server/{name}": {
+      "get": {
+        "operationId": "get_dedicated",
+        "summary": "Get details of a specific dedicated server",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "get_me",
+        "summary": "Get current account information",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/ip": {
+      "get": {
+        "operationId": "list_ips",
+        "summary": "List all IP addresses",
+        "tags": ["cloud", "compute"]
+      }
+    }
+  }
+}

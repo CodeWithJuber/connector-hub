@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OneProvider API",
+    "version": "1.0.0",
+    "description": "Manage OneProvider dedicated servers: list, get details, reboot servers, and view locations, templates, and bandwidth usage."
+  },
+  "servers": [
+    { "url": "https://api.oneprovider.com" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/servers": {
+      "get": {
+        "operationId": "list_servers",
+        "summary": "List all servers",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/servers/{id}": {
+      "get": {
+        "operationId": "get_server",
+        "summary": "Get details of a specific server",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/servers/{id}/reboot": {
+      "post": {
+        "operationId": "reboot",
+        "summary": "Reboot a server",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/locations": {
+      "get": {
+        "operationId": "list_locations",
+        "summary": "List available server locations",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/templates": {
+      "get": {
+        "operationId": "list_templates",
+        "summary": "List available server templates",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/servers/{id}/bandwidth": {
+      "get": {
+        "operationId": "bandwidth",
+        "summary": "Get bandwidth usage for a server",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    }
+  }
+}

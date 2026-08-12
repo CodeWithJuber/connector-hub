@@ -36,6 +36,7 @@ pub enum Transport {
     #[default]
     Http,
     Smtp,
+    Local,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

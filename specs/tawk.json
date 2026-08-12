@@ -1,0 +1,197 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tawk.to API",
+    "version": "1.0.0",
+    "description": "Tawk.to live chat and support ticket API for managing chats, tickets, agents, and properties."
+  },
+  "servers": [
+    { "url": "https://api.tawk.to/v1" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/chats": {
+      "get": {
+        "operationId": "list_chats",
+        "summary": "List chat conversations",
+        "description": "Returns a list of chat conversations, optionally filtered by property and status.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "property_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by property (site) ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["open", "pending", "closed"] },
+            "description": "Filter by chat status"
+          }
+        ]
+      }
+    },
+    "/chats/{chat_id}": {
+      "get": {
+        "operationId": "get_chat",
+        "summary": "Get a specific chat conversation",
+        "description": "Returns full details and message history for a single chat conversation.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Chat conversation ID"
+          }
+        ]
+      }
+    },
+    "/chats/{chat_id}/messages": {
+      "post": {
+        "operationId": "send_message",
+        "summary": "Send a message in a chat",
+        "description": "Sends a new message to an existing chat conversation.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Chat conversation ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": { "type": "string", "description": "Message text to send" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tickets": {
+      "get": {
+        "operationId": "list_tickets",
+        "summary": "List support tickets",
+        "description": "Returns a list of support tickets, optionally filtered by property and status.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "property_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by property (site) ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by ticket status"
+          }
+        ]
+      }
+    },
+    "/tickets/{ticket_id}": {
+      "get": {
+        "operationId": "get_ticket",
+        "summary": "Get a specific support ticket",
+        "description": "Returns full details and replies for a single support ticket.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Support ticket ID"
+          }
+        ]
+      }
+    },
+    "/tickets/{ticket_id}/replies": {
+      "post": {
+        "operationId": "reply_ticket",
+        "summary": "Reply to a support ticket",
+        "description": "Adds a reply to an existing support ticket.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Support ticket ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": { "type": "string", "description": "Reply message text" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents": {
+      "get": {
+        "operationId": "list_agents",
+        "summary": "List agents",
+        "description": "Returns a list of agents, optionally filtered by property.",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "property_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by property (site) ID"
+          }
+        ]
+      }
+    },
+    "/properties/{property_id}": {
+      "get": {
+        "operationId": "property_info",
+        "summary": "Get property information",
+        "description": "Returns details for a specific tawk.to property (website/chat widget).",
+        "tags": ["chat", "support"],
+        "parameters": [
+          {
+            "name": "property_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Property (site) ID"
+          }
+        ]
+      }
+    }
+  }
+}

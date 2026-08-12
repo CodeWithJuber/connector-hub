@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Claude API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://api.anthropic.com/v1" }
+  ],
+  "security": [
+    { "ApiKeyAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    }
+  },
+  "paths": {
+    "/messages": {
+      "post": {
+        "operationId": "chat",
+        "summary": "Create a message",
+        "tags": ["llm", "chat"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": { "type": "string" },
+                        "content": { "type": "string" }
+                      }
+                    }
+                  },
+                  "model": { "type": "string" },
+                  "system": { "type": "string" },
+                  "max_tokens": { "type": "integer", "default": 1024 },
+                  "temperature": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "operationId": "list_models",
+        "summary": "List available models",
+        "tags": ["llm", "models"]
+      }
+    }
+  }
+}

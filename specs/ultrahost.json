@@ -1,0 +1,136 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "UltaHost WHMCS API",
+    "version": "1.0.0",
+    "description": "UltaHost VPS management via WHMCS billing API"
+  },
+  "servers": [{"url": "https://billing.ultahost.com"}],
+  "paths": {
+    "/includes/api.php#list_services": {
+      "post": {
+        "operationId": "list_services",
+        "summary": "List all services/VPS instances",
+        "tags": ["cloud", "billing"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "limit": {"type": "integer", "description": "Max results to return"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/includes/api.php#get_service": {
+      "post": {
+        "operationId": "get_service",
+        "summary": "Get details of a specific service",
+        "tags": ["cloud", "billing"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer", "description": "Service ID"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/includes/api.php#reboot": {
+      "post": {
+        "operationId": "reboot",
+        "summary": "Reboot a VPS instance",
+        "tags": ["cloud", "power"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer", "description": "Service ID"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/includes/api.php#start": {
+      "post": {
+        "operationId": "start",
+        "summary": "Start/unsuspend a VPS instance",
+        "tags": ["cloud", "power"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer", "description": "Service ID"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/includes/api.php#stop": {
+      "post": {
+        "operationId": "stop",
+        "summary": "Stop/suspend a VPS instance",
+        "tags": ["cloud", "power"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer", "description": "Service ID"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/includes/api.php#status": {
+      "post": {
+        "operationId": "status",
+        "summary": "Get status of a VPS instance",
+        "tags": ["cloud", "monitoring"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {"type": "integer", "description": "Service ID"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}
