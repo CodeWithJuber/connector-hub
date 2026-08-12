@@ -1,0 +1,9 @@
+{
+  "name": "connector-hub",
+  "version": "2.0.0",
+  "tagline": "One hub for every external service — spec-driven, type-safe, auditable.",
+  "tags": ["connectors", "api", "mcp", "automation", "devops"],
+  "icon": "plug",
+  "homepage": "https://github.com/CodeWithJuber/connector-hub",
+  "repository": "https://github.com/CodeWithJuber/connector-hub"
+}

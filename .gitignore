@@ -1,17 +1,7 @@
 .env
-__pycache__/
-*.pyc
-.pytest_cache/
-.vendor/
-vendor-manifest.json
-.venv/
-dist/
-build/
-*.egg-info/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
 
 # Rust
 target/
+
+# Audit ledger (local data, not committed)
+audit.jsonl

@@ -1,2 +1,0 @@
-=== RUN 2026-08-10T20:23:00Z ===
-MCP handshake: initialize OK, tools/list OK (3 tools), hub_call mock OK | exit=0
