@@ -257,6 +257,7 @@ fn build_catalogue() -> anyhow::Result<hub_core::Catalogue> {
                             json_schema: raw.parameters,
                         },
                         tags: raw.tags,
+                        transport: hub_core::Transport::Http,
                     });
                 }
 
@@ -269,5 +270,66 @@ fn build_catalogue() -> anyhow::Result<hub_core::Catalogue> {
         }
     }
 
+    register_email_operations(&mut catalogue);
+
     Ok(catalogue)
+}
+
+fn register_email_operations(catalogue: &mut hub_core::Catalogue) {
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("email.send".into()),
+        provider: "email".into(),
+        summary: "Send an email via SMTP".into(),
+        description: "Send an email message using the configured SMTP transport. Supports plain text, HTML, and multipart bodies. Requires SMTP credentials configured via EMAIL_SMTP_* environment variables.".into(),
+        mutation_class: hub_policy::MutationClass::Mutating,
+        http_method: "POST".into(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["to", "subject"],
+                "properties": {
+                    "to": {
+                        "description": "Recipient email address(es). String or array of strings.",
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}}
+                        ]
+                    },
+                    "cc": {
+                        "description": "CC recipients",
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}}
+                        ]
+                    },
+                    "bcc": {
+                        "description": "BCC recipients",
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}}
+                        ]
+                    },
+                    "subject": {
+                        "type": "string",
+                        "description": "Email subject"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Plain text body"
+                    },
+                    "body_html": {
+                        "type": "string",
+                        "description": "HTML body (sent as multipart/alternative with plain text)"
+                    },
+                    "from": {
+                        "type": "string",
+                        "description": "Override sender address (defaults to configured from_address)"
+                    }
+                }
+            }),
+        },
+        tags: vec!["email".into(), "smtp".into()],
+        transport: hub_core::Transport::Smtp,
+    });
 }

@@ -2,7 +2,7 @@ pub mod credential;
 mod store;
 
 pub use credential::Credential;
-pub use store::AuthStore;
+pub use store::{AuthStore, ResolvedAuth};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
