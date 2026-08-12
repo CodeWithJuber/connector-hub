@@ -184,7 +184,51 @@ async fn main() -> anyhow::Result<()> {
                 println!("  Credentials configured for: {}", configured.join(", "));
             }
 
-            // 6. Check audit ledger if present
+            // 6. Check plugin manifest version parity
+            let manifest_paths = [
+                ".claude-plugin/plugin.json",
+                ".claude-plugin/marketplace.json",
+                ".codex-plugin/plugin.json",
+                "kimi.plugin.json",
+            ];
+            let mut manifest_versions: Vec<(String, String)> = Vec::new();
+            for path_str in &manifest_paths {
+                let p = std::path::Path::new(path_str);
+                if p.exists() {
+                    match std::fs::read_to_string(p) {
+                        Ok(content) => {
+                            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Some(ver) = val.get("version").and_then(|v| v.as_str()) {
+                                    manifest_versions.push((path_str.to_string(), ver.to_string()));
+                                } else {
+                                    warnings.push(format!("{path_str}: missing 'version' field"));
+                                }
+                            } else {
+                                errors.push(format!("{path_str}: invalid JSON"));
+                            }
+                        }
+                        Err(e) => errors.push(format!("{path_str}: {e}")),
+                    }
+                } else {
+                    warnings.push(format!("{path_str}: not found"));
+                }
+            }
+            if !manifest_versions.is_empty() {
+                let first_ver = &manifest_versions[0].1;
+                let all_match = manifest_versions.iter().all(|(_, v)| v == first_ver);
+                if all_match {
+                    println!(
+                        "  Plugin manifests: {} file(s) at version {first_ver}",
+                        manifest_versions.len()
+                    );
+                } else {
+                    for (path, ver) in &manifest_versions {
+                        errors.push(format!("manifest version mismatch: {path} = {ver}"));
+                    }
+                }
+            }
+
+            // 7. Check audit ledger if present
             let ledger_path = std::path::Path::new("audit.jsonl");
             if ledger_path.exists() {
                 match hub_policy::AuditLedger::verify(ledger_path) {

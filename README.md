@@ -1,125 +1,158 @@
 # Omni Connector Hub
 
-One channel for AI providers, email, hosting panels, VPS clouds, chat, GitHub,
-and server operations — behind one interface, with mock behavior when
-credentials are absent.
+One hub for AI providers, email, hosting panels, VPS clouds, chat, GitHub, and
+server operations — 21 providers, 278 operations, behind one type-safe
+interface with a hash-chained audit ledger.
 
-> **Status**: The Python connector library is functional and serves 21
-> connectors with 142 actions. A Rust rewrite (`crates/`) is in progress to
-> provide spec-driven full-surface coverage, a type-safe execution contract,
-> and an encrypted credential store.
+## Providers
 
-## Channels
+<!-- GENERATED — do not edit by hand. Regenerate with: connector-hub list -->
 
-| Channel | What it does | Goes live when you set |
-|---|---|---|
-| `openai` | ChatGPT chat / models / embeddings | `OPENAI_API_KEY` |
-| `claude` | Claude messages | `ANTHROPIC_API_KEY` |
-| `kimi` | Kimi (Moonshot) chat | `MOONSHOT_API_KEY` |
-| `cloudflare` | Workers AI models | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` |
-| `email` | Multi-account IMAP/SMTP (read, search, send) | `EMAIL_ACCOUNTS` (JSON) |
-| `gmail` | Gmail REST, multi-account OAuth2 | `GOOGLE_CLIENT_ID/SECRET` + refresh tokens |
-| `whmcs` | Clients, invoices, tickets, service module actions | `WHMCS_URL` + API identifier/secret |
-| `whm` | cPanel accounts, suspend/terminate, DNS zones, server status | `WHM_HOST` + root token |
-| `cpanel` | Domains, email accounts, DBs, files, cron | `CPANEL_HOST` + user token |
-| `hetzner` | Servers lifecycle, images, locations | `HETZNER_API_TOKEN` |
-| `linode` | Linodes lifecycle, regions, types | `LINODE_API_TOKEN` |
-| `contabo` | Instances lifecycle, images, snapshots | OAuth client + user creds |
-| `ovh` | VPS/dedicated, IPs, account | OVH app key/secret/consumer key |
-| `oneprovider` | Servers, reboots, locations | `ONEPROVIDER_API_KEY` |
-| `ultrahost` | Services via WHMCS bridge | `ULTRAHOST_*` |
-| `tawk` | tawk.to chats, tickets, agents | `TAWK_API_KEY` + property ID |
-| `github` | Full repo/issue/PR/workflow/code-search control | `GITHUB_TOKEN` |
-| `ops_ssh` | Local bash + SSH fleet commands | `HUB_SECURITY_POLICY` with capability grants |
-| `ops_browser` | Fetch pages, status checks | none |
-| `ops_network` | ping, DNS, ports, traceroute, headers | `HUB_SECURITY_POLICY` |
-| `ops_security` | SSL expiry, risky ports, sshd audit, secret gen | `HUB_SECURITY_POLICY` |
+| Provider | Operations | Destructive | Auth | Spec source |
+|---|---|---|---|---|
+| `claude` | 2 | 0 | `ANTHROPIC_API_KEY` | hand-written |
+| `cloudflare` | 2 | 0 | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | hand-written |
+| `contabo` | 8 | 0 | OAuth client + user creds | hand-written |
+| `cpanel` | 11 | 0 | `CPANEL_HOST` + user:token | hand-written |
+| `email` | 4 | 0 | `EMAIL_ACCOUNTS` (JSON) | built-in (IMAP/SMTP) |
+| `github` | 25 | 2 | `GITHUB_TOKEN` | hand-written |
+| `gmail` | 79 | 15 | `GOOGLE_CLIENT_ID/SECRET` + refresh tokens | Google Discovery |
+| `hetzner` | 72 | 11 | `HETZNER_API_TOKEN` | OpenAPI 3.0.3 |
+| `kimi` | 2 | 0 | `MOONSHOT_API_KEY` | hand-written |
+| `linode` | 9 | 1 | `LINODE_API_TOKEN` | hand-written |
+| `oneprovider` | 6 | 0 | `ONEPROVIDER_API_KEY` | hand-written |
+| `openai` | 3 | 0 | `OPENAI_API_KEY` | hand-written |
+| `ops_browser` | 3 | 0 | none | built-in (local) |
+| `ops_network` | 5 | 0 | `HUB_SECURITY_POLICY` | built-in (local) |
+| `ops_security` | 5 | 0 | `HUB_SECURITY_POLICY` | built-in (local) |
+| `ops_ssh` | 3 | 2 | `HUB_SECURITY_POLICY` | built-in (local) |
+| `ovh` | 7 | 0 | OVH app key/secret/consumer key | hand-written |
+| `tawk` | 8 | 0 | `TAWK_API_KEY` + property ID | hand-written |
+| `ultrahost` | 6 | 0 | `ULTRAHOST_*` | hand-written |
+| `whm` | 9 | 1 | `WHM_HOST` + root token | hand-written |
+| `whmcs` | 9 | 0 | `WHMCS_URL` + API identifier/secret | hand-written |
+
+**Total: 278 operations (32 destructive)**
 
 ## Quick start
 
 ```bash
-cd connector-hub
-cp .env.template .env          # fill in what you use
-pip install -e '.[test]'       # or: uv sync --frozen --all-groups
-python3 -m hub.gateway list    # see every channel, MOCK vs LIVE
-python3 -m hub.gateway status gmail
-python3 -m hub.gateway call hetzner list_servers
+# Build from source
+cd crates
+cargo build --release
+
+# List all providers
+connector-hub list
+
+# Search for operations
+connector-hub search "delete server"
+
+# Describe a specific operation
+connector-hub describe hetzner.servers.delete
+
+# Start the MCP stdio server
+connector-hub mcp
+
+# Validate the installation
+connector-hub validate
 ```
 
-For a reproducible developer install (Python 3.11–3.13), install
-[uv](https://docs.astral.sh/uv/getting-started/installation/) and run:
+## Architecture
+
+Connectors are **data, not code**. Provider specs (OpenAPI 3.x or Google
+Discovery JSON) are compiled into an operation catalogue at startup. The MCP
+surface is small and fixed while the reachable surface is complete:
+
+```
+provider spec (OpenAPI / Google Discovery / hand-written JSON)
+        │  loaded at startup
+        ▼
+operation catalogue  (every endpoint, typed, classified)
+        │
+        ├── search_operations(query, provider?)      → find any endpoint
+        ├── describe_operation(id)                   → exact JSON Schema
+        ├── call_operation(id, args, account, …)     → validated execution
+        └── list_providers()                         → provider summary
+```
+
+### Crate layout
+
+```
+crates/
+  connector-hub/   CLI binary + rmcp MCP stdio server
+  hub-core/        Operation catalogue, dispatch, execution-state envelope
+  hub-spec/        Spec ingestion: OpenAPI 3.x + Google Discovery → operations
+  hub-auth/        Credential store, OAuth, token refresh
+  hub-policy/      Permission model, capability grants, hash-chained audit ledger
+  hub-net/         HTTP execution: SSRF validation, IP pinning, retries, redaction
+specs/             Provider spec files (JSON)
+```
+
+### Execution contract
+
+Every operation result is a typed enum — non-execution states cannot carry
+`executed: true`:
+
+- `Succeeded { executed: true, data }` — the only state with real output
+- `DryRun { would_execute, mutation_class }` — what would happen
+- `ConfirmationRequired { provider, operation, token_format }` — destructive ops need confirmation
+- `ConfigurationRequired { provider, missing }` — credentials or runtime not available
+- `PermissionDenied` — policy refused the operation
+
+Destructive operations require an explicit confirmation token or a standing
+policy grant. There is no env-var-presence shortcut to liveness.
+
+### Audit ledger
+
+Every policy decision (granted or refused) is appended to a BLAKE3 hash-chained
+JSONL audit ledger. Verify integrity with:
 
 ```bash
-uv sync --frozen --all-groups
-uv run connector-hub list
+connector-hub audit-verify audit.jsonl
 ```
 
-## Mock vs Live
-
-Missing credentials select mock mode — calls return `{"ok": True, "mock": True}`
-with the action echoed. This is for development only. When credentials are set
-in `.env`, the connector goes live and makes real HTTP calls.
-
-## Use as MCP server
-
-```bash
-python3 -m hub.gateway mcp
-```
-
-Each action is exposed as a tool named `hub__<connector>__<action>`.
-The server bounds concurrent work (default 8, `HUB_MCP_MAX_CONCURRENCY`) and
-applies a deadline to every call (default 30s, `HUB_MCP_CALL_TIMEOUT`).
-
-## Gmail OAuth (multiple accounts)
-
-```bash
-python3 scripts/setup_oauth.py    # per account: opens consent URL, mints refresh token
-python3 -m hub.gateway call gmail send '{"label":"main","to":"x@y.com","subject":"hi","body":"test"}'
-```
+See `docs/adr/0004-audit-ledger-format.md` for the format specification.
 
 ## Security model
 
-- Secrets live in `.env` (git-ignored) or platform secret managers. Never pass
-  them as action parameters.
-- Logs redact values matching KEY/TOKEN/SECRET/PASS patterns.
-- Ops connectors (`ops_ssh`, `ops_network`) require deployment capabilities,
-  allowlisted actions, and approval identifiers configured in `HUB_SECURITY_POLICY`.
-  See `hub/security/policy.py` for SSRF defense, IP pinning, redirect validation,
-  and bounded subprocess execution.
-- OAuth refresh tokens are minted only by the setup script you run yourself.
+- Credentials live in environment variables or an encrypted store. Never in
+  action parameters, never in tool output.
+- All HTTP goes through one `NetClient` with SSRF validation, IP pinning,
+  redirect control, and bounded retries.
+- Ops connectors (`ops_ssh`, `ops_network`) require `HUB_SECURITY_POLICY`
+  capability grants.
+- OAuth refresh tokens are never serialised into MCP tool results.
+
+## Adding a provider
+
+1. Create `specs/<provider>.json` in OpenAPI 3.0.3 or Google Discovery format.
+2. Add auth entry in `crates/hub-auth/src/store.rs` `from_env()`.
+3. Run `connector-hub list` to verify operations load.
+4. Run `connector-hub validate` to confirm no duplicate IDs.
 
 ## Tests
 
 ```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run mypy
-uv run pytest -m "not integration"
-RUN_INTEGRATION=1 uv run pytest -m integration tests/integration
+cd crates
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test --workspace
+cargo run -- validate
 ```
 
-## Data Sources
+## Related projects
 
-- https://github.com/CodeWithJuber/forgekit
-- https://github.com/CodeWithJuber/hikmah-stack
-
-Provider endpoints used by individual connectors are documented in their source
-modules.
-
-## Layout
-
-```
-crates/           Rust workspace (in progress)
-hub/              Python registry, gateway CLI, MCP server
-connectors/       Python connector implementations (one module per service)
-mcp/mcp.json      drop-in MCP client config
-scripts/          OAuth setup wizard
-tests/            unit and opt-in integration tests
-```
+- [CodeWithJuber/forgekit](https://github.com/CodeWithJuber/forgekit) — delivery
+  and substrate (memory, foresight, guardrail hooks)
+- [CodeWithJuber/hikmah-stack](https://github.com/CodeWithJuber/hikmah-stack) —
+  judgment (deterministic cognitive kernel, decision scoring, audit ledger)
 
 ## CI
 
-Every pull request runs: formatting, linting, type checking, non-integration
-tests on Python 3.11 and 3.13, package builds, dependency auditing, and secret
-scanning. Real-provider tests are opt-in behind the protected
-`protected-integration` environment.
+Every pull request runs: Rust formatting, clippy with deny warnings, workspace
+tests, installation validation, and secret scanning. Real-provider integration
+tests are opt-in behind the protected `protected-integration` environment.
+
+## License
+
+MIT

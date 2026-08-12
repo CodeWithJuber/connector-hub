@@ -14,34 +14,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Quality / Python ${{ matrix.python-version }}
+  rust:
+    name: Rust
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          version: "0.8.4"
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - name: Install locked dependencies
-        run: uv sync --frozen --all-groups
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6  # v2
+        with:
+          workspaces: crates
       - name: Check formatting
-        run: uv run ruff format --check .
+        run: cargo fmt --check
+        working-directory: crates
       - name: Lint
-        run: uv run ruff check .
-      - name: Type check
-        run: uv run mypy
-      - name: Test without external network integrations
-        run: uv run pytest -m 'not integration'
-      - name: Build distributions
-        run: uv build
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: crates
+      - name: Test
+        run: cargo test --workspace
+        working-directory: crates
+      - name: Validate installation
+        run: cargo run --manifest-path crates/Cargo.toml -- validate
+
+  manifests:
+    name: Manifest version parity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Check manifest versions match
+        run: |
+          set -euo pipefail
+          versions=$(jq -r '.version' \
+            .claude-plugin/plugin.json \
+            .claude-plugin/marketplace.json \
+            .codex-plugin/plugin.json \
+            kimi.plugin.json | sort -u)
+          count=$(echo "$versions" | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "ERROR: Plugin manifest versions do not match:"
+            echo "  .claude-plugin/plugin.json:       $(jq -r .version .claude-plugin/plugin.json)"
+            echo "  .claude-plugin/marketplace.json:   $(jq -r .version .claude-plugin/marketplace.json)"
+            echo "  .codex-plugin/plugin.json:         $(jq -r .version .codex-plugin/plugin.json)"
+            echo "  kimi.plugin.json:                  $(jq -r .version kimi.plugin.json)"
+            exit 1
+          fi
+          echo "All manifests at version: $versions"
 
   security:
     name: Security
@@ -51,16 +71,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
-        with:
-          version: "0.8.4"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - run: uv sync --frozen --all-groups
-      - name: Audit locked dependencies
-        run: |
-          uv export --frozen --no-dev --no-emit-project --output-file /tmp/runtime-requirements.txt
-          uv run pip-audit --require-hashes --no-deps -r /tmp/runtime-requirements.txt
       - name: Install Gitleaks
         env:
           GITLEAKS_VERSION: "8.30.1"
@@ -85,12 +95,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6  # v2
         with:
-          version: "0.8.4"
-      - run: uv sync --frozen --all-groups
+          workspaces: crates
       - name: Run opt-in integrations
-        run: uv run pytest -m integration tests/integration
+        run: cargo test --workspace -- --ignored
+        working-directory: crates
         env:
-          RUN_INTEGRATION: "1"
           HETZNER_API_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
