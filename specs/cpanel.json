@@ -1,0 +1,201 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "cPanel UAPI",
+    "version": "1.0.0",
+    "description": "cPanel Unified API (UAPI) for managing domains, email accounts, databases, files, cron jobs, and disk quotas."
+  },
+  "servers": [
+    { "url": "https://localhost:2083" }
+  ],
+  "security": [
+    { "TokenAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "TokenAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "paths": {
+    "/execute/DomainInfo/domains_data": {
+      "get": {
+        "operationId": "list_domains",
+        "summary": "List all domains on the account",
+        "description": "Returns data for all domains (addon, parked, sub) associated with the cPanel account.",
+        "tags": ["hosting", "cpanel"]
+      }
+    },
+    "/execute/SubDomain/addsubdomain": {
+      "post": {
+        "operationId": "add_subdomain",
+        "summary": "Add a subdomain",
+        "description": "Creates a new subdomain under the specified root domain.",
+        "tags": ["hosting", "cpanel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subdomain", "rootdomain", "dir"],
+                "properties": {
+                  "subdomain": { "type": "string", "description": "Subdomain name (e.g. 'blog')" },
+                  "rootdomain": { "type": "string", "description": "Root domain (e.g. 'example.com')" },
+                  "dir": { "type": "string", "description": "Document root directory for the subdomain" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute/Email/list_pops": {
+      "get": {
+        "operationId": "list_email_accounts",
+        "summary": "List email accounts",
+        "description": "Returns a list of all POP/IMAP email accounts on the cPanel account.",
+        "tags": ["hosting", "cpanel"]
+      }
+    },
+    "/execute/Email/add_pop": {
+      "post": {
+        "operationId": "add_email",
+        "summary": "Create an email account",
+        "description": "Creates a new email account with the specified address, password, and mailbox quota.",
+        "tags": ["hosting", "cpanel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "description": "Email address to create (local part or full address)" },
+                  "password": { "type": "string", "description": "Password for the email account" },
+                  "quota": { "type": "integer", "default": 250, "description": "Mailbox quota in MB" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute/Mysql/list_databases": {
+      "get": {
+        "operationId": "list_databases",
+        "summary": "List MySQL databases",
+        "description": "Returns a list of all MySQL databases owned by the cPanel account.",
+        "tags": ["hosting", "cpanel"]
+      }
+    },
+    "/execute/Mysql/create_database": {
+      "post": {
+        "operationId": "create_database",
+        "summary": "Create a MySQL database",
+        "description": "Creates a new MySQL database with the given name (prefixed with cPanel username).",
+        "tags": ["hosting", "cpanel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "description": "Database name (will be prefixed with cPanel username)" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute/Mysql/create_user": {
+      "post": {
+        "operationId": "create_db_user",
+        "summary": "Create a MySQL database user",
+        "description": "Creates a new MySQL user that can be granted access to databases.",
+        "tags": ["hosting", "cpanel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user", "password"],
+                "properties": {
+                  "user": { "type": "string", "description": "MySQL username to create" },
+                  "password": { "type": "string", "description": "Password for the MySQL user" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute/Fileman/list_files": {
+      "get": {
+        "operationId": "file_list",
+        "summary": "List files in a directory",
+        "description": "Returns a directory listing with file names, sizes, types, and permissions.",
+        "tags": ["hosting", "cpanel"],
+        "parameters": [
+          {
+            "name": "dir",
+            "in": "query",
+            "schema": { "type": "string", "default": "." },
+            "description": "Directory path to list (relative to home)"
+          }
+        ]
+      }
+    },
+    "/execute/Cron/list_cron": {
+      "get": {
+        "operationId": "cron_list",
+        "summary": "List cron jobs",
+        "description": "Returns all cron jobs configured for the cPanel account.",
+        "tags": ["hosting", "cpanel"]
+      }
+    },
+    "/execute/Cron/add_line": {
+      "post": {
+        "operationId": "cron_add",
+        "summary": "Add a cron job",
+        "description": "Creates a new cron job with the specified schedule and command.",
+        "tags": ["hosting", "cpanel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                  "command": { "type": "string", "description": "Command to execute" },
+                  "minute": { "type": "string", "default": "0", "description": "Minute field (0-59 or *)" },
+                  "hour": { "type": "string", "default": "0", "description": "Hour field (0-23 or *)" },
+                  "day": { "type": "string", "default": "*", "description": "Day of month (1-31 or *)" },
+                  "month": { "type": "string", "default": "*", "description": "Month (1-12 or *)" },
+                  "weekday": { "type": "string", "default": "*", "description": "Day of week (0-7 or *)" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute/Quota/get_quota_info": {
+      "get": {
+        "operationId": "disk_usage",
+        "summary": "Get disk usage and quota info",
+        "description": "Returns current disk usage and quota limits for the cPanel account.",
+        "tags": ["hosting", "cpanel"]
+      }
+    }
+  }
+}

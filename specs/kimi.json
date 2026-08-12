@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kimi API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://api.moonshot.cn/v1" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "operationId": "chat",
+        "summary": "Create a chat completion",
+        "tags": ["llm", "chat"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": { "type": "string" },
+                        "content": { "type": "string" }
+                      }
+                    }
+                  },
+                  "model": { "type": "string", "default": "kimi-k2-0711-preview" },
+                  "temperature": { "type": "number" },
+                  "max_tokens": { "type": "integer" },
+                  "top_p": { "type": "number" },
+                  "stream": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "operationId": "list_models",
+        "summary": "List available models",
+        "tags": ["llm", "models"]
+      }
+    }
+  }
+}

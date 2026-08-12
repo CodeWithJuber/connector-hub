@@ -1,0 +1,252 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WHMCS API",
+    "version": "1.0.0",
+    "description": "WHMCS billing and client management API. All actions use form-encoded POST to a single endpoint with an 'action' parameter."
+  },
+  "servers": [
+    { "url": "https://localhost" }
+  ],
+  "security": [
+    { "ApiCredentials": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiCredentials": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "paths": {
+    "/includes/api.php": {
+      "post": {
+        "operationId": "get_clients",
+        "summary": "Get a list of clients",
+        "description": "Retrieves a paginated list of all clients in the WHMCS system.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["GetClients"], "default": "GetClients" },
+                  "limit": { "type": "integer", "default": 25, "description": "Number of results to return" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#GetClientsDetails": {
+      "post": {
+        "operationId": "get_client",
+        "summary": "Get details for a specific client",
+        "description": "Retrieves full details for a single client by their client ID.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "client_id"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["GetClientsDetails"], "default": "GetClientsDetails" },
+                  "client_id": { "type": "integer", "description": "Client ID to retrieve" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#GetInvoices": {
+      "post": {
+        "operationId": "get_invoices",
+        "summary": "Get invoices",
+        "description": "Retrieves a list of invoices, optionally filtered by status and client.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["GetInvoices"], "default": "GetInvoices" },
+                  "limit": { "type": "integer", "description": "Number of results to return" },
+                  "status": { "type": "string", "description": "Filter by invoice status (Paid, Unpaid, Cancelled, etc.)" },
+                  "client_id": { "type": "integer", "description": "Filter by client ID" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#GetTickets": {
+      "post": {
+        "operationId": "get_tickets",
+        "summary": "Get support tickets",
+        "description": "Retrieves a list of support tickets, optionally filtered by status and client.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["GetTickets"], "default": "GetTickets" },
+                  "limit": { "type": "integer", "description": "Number of results to return" },
+                  "status": { "type": "string", "description": "Filter by ticket status (Open, Answered, Closed, etc.)" },
+                  "client_id": { "type": "integer", "description": "Filter by client ID" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#AddTicketReply": {
+      "post": {
+        "operationId": "reply_ticket",
+        "summary": "Reply to a support ticket",
+        "description": "Adds a reply message to an existing support ticket.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "ticket_id", "message"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["AddTicketReply"], "default": "AddTicketReply" },
+                  "ticket_id": { "type": "integer", "description": "Ticket ID to reply to" },
+                  "message": { "type": "string", "description": "Reply message body" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#AddClient": {
+      "post": {
+        "operationId": "add_client",
+        "summary": "Add a new client",
+        "description": "Creates a new client account in WHMCS.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "firstname", "lastname", "email", "password"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["AddClient"], "default": "AddClient" },
+                  "firstname": { "type": "string", "description": "Client first name" },
+                  "lastname": { "type": "string", "description": "Client last name" },
+                  "email": { "type": "string", "description": "Client email address" },
+                  "password": { "type": "string", "description": "Client account password" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#CreateInvoice": {
+      "post": {
+        "operationId": "create_invoice",
+        "summary": "Create a new invoice",
+        "description": "Creates a new invoice for a client with the specified line items.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "client_id", "items"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["CreateInvoice"], "default": "CreateInvoice" },
+                  "client_id": { "type": "integer", "description": "Client ID to create the invoice for" },
+                  "items": {
+                    "type": "array",
+                    "description": "Invoice line items",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "description": { "type": "string" },
+                        "amount": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#GetProducts": {
+      "post": {
+        "operationId": "get_products",
+        "summary": "Get products and services",
+        "description": "Retrieves configured products/services, optionally filtered by product or group ID.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["GetProducts"], "default": "GetProducts" },
+                  "product_id": { "type": "integer", "description": "Filter by specific product ID" },
+                  "group_id": { "type": "integer", "description": "Filter by product group ID" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/includes/api.php#ModuleAction": {
+      "post": {
+        "operationId": "module_action",
+        "summary": "Execute a module action on a service",
+        "description": "Triggers a provisioning module action (create, suspend, unsuspend, or terminate) on a client service.",
+        "tags": ["hosting", "billing"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": ["action", "service_id"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["ModuleSuspend", "ModuleUnsuspend", "ModuleTerminate", "ModuleCreate"], "description": "Module action to execute" },
+                  "service_id": { "type": "integer", "description": "Service ID to perform the action on" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

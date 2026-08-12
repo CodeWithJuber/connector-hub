@@ -1,0 +1,90 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cloudflare Workers AI API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://api.cloudflare.com/client/v4" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/accounts/{account_id}/ai/run/{model}": {
+      "post": {
+        "operationId": "chat",
+        "summary": "Run a chat completion on Workers AI",
+        "tags": ["llm", "chat"],
+        "parameters": [
+          { "name": "account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "model", "in": "path", "required": true, "schema": { "type": "string", "default": "@cf/meta/llama-3.1-8b-instruct" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": { "type": "string" },
+                        "content": { "type": "string" }
+                      }
+                    }
+                  },
+                  "max_tokens": { "type": "integer" },
+                  "temperature": { "type": "number" },
+                  "stream": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{account_id}/ai/run": {
+      "post": {
+        "operationId": "run_model",
+        "summary": "Run an arbitrary AI model",
+        "tags": ["llm", "inference"],
+        "parameters": [
+          { "name": "account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["model", "input"],
+                "properties": {
+                  "model": { "type": "string" },
+                  "input": {
+                    "oneOf": [
+                      { "type": "object" },
+                      { "type": "string" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

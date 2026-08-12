@@ -60,6 +60,12 @@ impl Dispatcher {
             Transport::Smtp => {
                 return self.execute_smtp(auth, account, args).await;
             }
+            Transport::Local => {
+                return Ok(ExecutionOutcome::ConfigurationRequired {
+                    provider: op.provider.clone(),
+                    missing: vec![format!("local runtime required for operation {}", op.id)],
+                });
+            }
             Transport::Http => {}
         }
 

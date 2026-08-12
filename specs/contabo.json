@@ -1,0 +1,114 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Contabo API",
+    "version": "1.0.0",
+    "description": "Manage Contabo compute instances: create, start, stop, restart instances, and list images and snapshots."
+  },
+  "servers": [
+    { "url": "https://api.contabo.com/v1" }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/compute/instances": {
+      "get": {
+        "operationId": "list_instances",
+        "summary": "List all compute instances",
+        "tags": ["cloud", "compute"]
+      },
+      "post": {
+        "operationId": "create_instance",
+        "summary": "Create a new compute instance",
+        "tags": ["cloud", "compute"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["image_id", "product_id"],
+                "properties": {
+                  "image_id": { "type": "string", "description": "Image ID to deploy" },
+                  "product_id": { "type": "string", "description": "Product/plan ID" },
+                  "region": { "type": "string", "description": "Region for deployment" },
+                  "period": { "type": "integer", "description": "Billing period in months" },
+                  "displayName": { "type": "string", "description": "Display name for the instance" },
+                  "rootPassword": { "type": "string", "description": "Root password" },
+                  "sshKeys": { "type": "array", "items": { "type": "string" }, "description": "SSH key IDs" },
+                  "userData": { "type": "string", "description": "Cloud-init user data" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/compute/instances/{id}": {
+      "get": {
+        "operationId": "get_instance",
+        "summary": "Get details of a specific compute instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/compute/instances/{id}/actions/start": {
+      "post": {
+        "operationId": "start",
+        "summary": "Start a compute instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/compute/instances/{id}/actions/stop": {
+      "post": {
+        "operationId": "stop",
+        "summary": "Stop a compute instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/compute/instances/{id}/actions/restart": {
+      "post": {
+        "operationId": "restart",
+        "summary": "Restart a compute instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    },
+    "/compute/images": {
+      "get": {
+        "operationId": "list_images",
+        "summary": "List available images",
+        "tags": ["cloud", "compute"]
+      }
+    },
+    "/compute/instances/{id}/snapshots": {
+      "get": {
+        "operationId": "list_snapshots",
+        "summary": "List snapshots for a compute instance",
+        "tags": ["cloud", "compute"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ]
+      }
+    }
+  }
+}

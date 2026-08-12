@@ -271,16 +271,17 @@ fn build_catalogue() -> anyhow::Result<hub_core::Catalogue> {
     }
 
     register_email_operations(&mut catalogue);
+    register_ops_operations(&mut catalogue);
 
     Ok(catalogue)
 }
 
 fn register_email_operations(catalogue: &mut hub_core::Catalogue) {
     catalogue.register(hub_core::Operation {
-        id: hub_core::OperationId("email.send".into()),
+        id: hub_core::OperationId("email.send_email".into()),
         provider: "email".into(),
         summary: "Send an email via SMTP".into(),
-        description: "Send an email message using the configured SMTP transport. Supports plain text, HTML, and multipart bodies. Requires SMTP credentials configured via EMAIL_SMTP_* environment variables.".into(),
+        description: "Send an email message using the configured SMTP transport.".into(),
         mutation_class: hub_policy::MutationClass::Mutating,
         http_method: "POST".into(),
         path_template: String::new(),
@@ -289,47 +290,433 @@ fn register_email_operations(catalogue: &mut hub_core::Catalogue) {
                 "type": "object",
                 "required": ["to", "subject"],
                 "properties": {
-                    "to": {
-                        "description": "Recipient email address(es). String or array of strings.",
-                        "oneOf": [
-                            {"type": "string"},
-                            {"type": "array", "items": {"type": "string"}}
-                        ]
-                    },
-                    "cc": {
-                        "description": "CC recipients",
-                        "oneOf": [
-                            {"type": "string"},
-                            {"type": "array", "items": {"type": "string"}}
-                        ]
-                    },
-                    "bcc": {
-                        "description": "BCC recipients",
-                        "oneOf": [
-                            {"type": "string"},
-                            {"type": "array", "items": {"type": "string"}}
-                        ]
-                    },
-                    "subject": {
-                        "type": "string",
-                        "description": "Email subject"
-                    },
-                    "body": {
-                        "type": "string",
-                        "description": "Plain text body"
-                    },
-                    "body_html": {
-                        "type": "string",
-                        "description": "HTML body (sent as multipart/alternative with plain text)"
-                    },
-                    "from": {
-                        "type": "string",
-                        "description": "Override sender address (defaults to configured from_address)"
-                    }
+                    "to": {"description": "Recipient email address(es)", "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+                    "cc": {"description": "CC recipients", "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+                    "bcc": {"description": "BCC recipients", "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+                    "subject": {"type": "string", "description": "Email subject"},
+                    "body": {"type": "string", "description": "Plain text body"},
+                    "body_html": {"type": "string", "description": "HTML body"},
+                    "from": {"type": "string", "description": "Override sender address"}
                 }
             }),
         },
         tags: vec!["email".into(), "smtp".into()],
         transport: hub_core::Transport::Smtp,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("email.list_accounts".into()),
+        provider: "email".into(),
+        summary: "List configured email accounts".into(),
+        description: "List all IMAP/SMTP email accounts configured via environment variables."
+            .into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({"type": "object"}),
+        },
+        tags: vec!["email".into(), "imap".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("email.check_inbox".into()),
+        provider: "email".into(),
+        summary: "Check inbox for new messages".into(),
+        description: "Connect via IMAP and retrieve recent messages from the inbox.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "account": {"type": "string", "description": "Account label (default: first configured)"},
+                    "limit": {"type": "integer", "description": "Max messages to return", "default": 10},
+                    "folder": {"type": "string", "description": "IMAP folder", "default": "INBOX"}
+                }
+            }),
+        },
+        tags: vec!["email".into(), "imap".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("email.search".into()),
+        provider: "email".into(),
+        summary: "Search emails via IMAP".into(),
+        description: "Search for emails matching criteria using IMAP SEARCH.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                    "query": {"type": "string", "description": "IMAP search query"},
+                    "account": {"type": "string", "description": "Account label"},
+                    "limit": {"type": "integer", "description": "Max results", "default": 20},
+                    "folder": {"type": "string", "description": "IMAP folder", "default": "INBOX"}
+                }
+            }),
+        },
+        tags: vec!["email".into(), "imap".into()],
+        transport: hub_core::Transport::Local,
+    });
+}
+
+fn register_ops_operations(catalogue: &mut hub_core::Catalogue) {
+    // ops_ssh: 3 actions
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_ssh.run_local".into()),
+        provider: "ops_ssh".into(),
+        summary: "Run a command on the local host".into(),
+        description: "Execute a shell command locally with configurable timeout.".into(),
+        mutation_class: hub_policy::MutationClass::Destructive,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                    "command": {"type": "string", "description": "Shell command to execute"},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "ssh".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_ssh.run_ssh".into()),
+        provider: "ops_ssh".into(),
+        summary: "Run a command on a remote host via SSH".into(),
+        description: "Execute a command on a remote host using SSH key authentication.".into(),
+        mutation_class: hub_policy::MutationClass::Destructive,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host", "command"],
+                "properties": {
+                    "host": {"type": "string", "description": "SSH host (from SSH_HOSTS or user@host)"},
+                    "command": {"type": "string", "description": "Command to execute"},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "ssh".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_ssh.list_hosts".into()),
+        provider: "ops_ssh".into(),
+        summary: "List configured SSH hosts".into(),
+        description: "List the hosts configured in the SSH_HOSTS environment variable.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({"type": "object"}),
+        },
+        tags: vec!["ops".into(), "ssh".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    // ops_browser: 3 actions
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_browser.fetch".into()),
+        provider: "ops_browser".into(),
+        summary: "Fetch a URL and return its content".into(),
+        description: "HTTP GET a URL with SSRF protection and return the response body.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                    "url": {"type": "string", "description": "URL to fetch"},
+                    "method": {"type": "string", "description": "HTTP method", "default": "GET"},
+                    "max_bytes": {"type": "integer", "description": "Max response size", "default": 2000000}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "browser".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_browser.check_status".into()),
+        provider: "ops_browser".into(),
+        summary: "Check HTTP status of a URL".into(),
+        description: "Perform a HEAD request and return the HTTP status code and headers.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                    "url": {"type": "string", "description": "URL to check"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "browser".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_browser.screenshot".into()),
+        provider: "ops_browser".into(),
+        summary: "Take a screenshot of a URL".into(),
+        description: "Capture a screenshot of a web page (stub — requires headless browser)."
+            .into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                    "url": {"type": "string", "description": "URL to capture"},
+                    "width": {"type": "integer", "description": "Viewport width", "default": 1280},
+                    "height": {"type": "integer", "description": "Viewport height", "default": 720}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "browser".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    // ops_security: 5 actions
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_security.audit_password_strength".into()),
+        provider: "ops_security".into(),
+        summary: "Audit password strength".into(),
+        description: "Evaluate a password against common strength criteria.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                    "password": {"type": "string", "description": "Password to audit"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "security".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_security.check_ssl".into()),
+        provider: "ops_security".into(),
+        summary: "Check SSL certificate for a domain".into(),
+        description: "Connect to a host and inspect its TLS certificate for validity and expiry."
+            .into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host"],
+                "properties": {
+                    "host": {"type": "string", "description": "Hostname to check"},
+                    "port": {"type": "integer", "description": "Port", "default": 443}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "security".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_security.scan_common_exposure".into()),
+        provider: "ops_security".into(),
+        summary: "Scan for common exposure paths".into(),
+        description: "Check a target for commonly exposed files and directories.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                    "url": {"type": "string", "description": "Base URL to scan"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "security".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_security.ssh_config_audit".into()),
+        provider: "ops_security".into(),
+        summary: "Audit SSH server configuration".into(),
+        description: "Connect to an SSH server and audit its configuration for security issues."
+            .into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host"],
+                "properties": {
+                    "host": {"type": "string", "description": "SSH host to audit"},
+                    "port": {"type": "integer", "description": "SSH port", "default": 22}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "security".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_security.generate_secret".into()),
+        provider: "ops_security".into(),
+        summary: "Generate a cryptographic secret".into(),
+        description: "Generate a random secret string of specified length and charset.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "length": {"type": "integer", "description": "Secret length", "default": 32},
+                    "charset": {"type": "string", "description": "Character set: alphanumeric, hex, base64, ascii", "default": "alphanumeric"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "security".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    // ops_network: 5 actions
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_network.ping".into()),
+        provider: "ops_network".into(),
+        summary: "Ping a host".into(),
+        description: "Send ICMP pings to a host and report latency.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host"],
+                "properties": {
+                    "host": {"type": "string", "description": "Host to ping"},
+                    "count": {"type": "integer", "description": "Number of pings", "default": 4}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "network".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_network.dns_lookup".into()),
+        provider: "ops_network".into(),
+        summary: "DNS lookup".into(),
+        description: "Resolve DNS records for a domain.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["domain"],
+                "properties": {
+                    "domain": {"type": "string", "description": "Domain to look up"},
+                    "record_type": {"type": "string", "description": "Record type (A, AAAA, MX, etc.)", "default": "A"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "network".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_network.port_check".into()),
+        provider: "ops_network".into(),
+        summary: "Check if a port is open".into(),
+        description: "Test TCP connectivity to a host on a specific port.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host", "port"],
+                "properties": {
+                    "host": {"type": "string", "description": "Host to check"},
+                    "port": {"type": "integer", "description": "Port to check"},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 5}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "network".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_network.traceroute".into()),
+        provider: "ops_network".into(),
+        summary: "Traceroute to a host".into(),
+        description: "Trace the network path to a destination host.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["host"],
+                "properties": {
+                    "host": {"type": "string", "description": "Destination host"},
+                    "max_hops": {"type": "integer", "description": "Maximum number of hops", "default": 30}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "network".into()],
+        transport: hub_core::Transport::Local,
+    });
+
+    catalogue.register(hub_core::Operation {
+        id: hub_core::OperationId("ops_network.http_headers".into()),
+        provider: "ops_network".into(),
+        summary: "Inspect HTTP response headers".into(),
+        description: "Send an HTTP request and return response headers for analysis.".into(),
+        mutation_class: hub_policy::MutationClass::ReadOnly,
+        http_method: String::new(),
+        path_template: String::new(),
+        parameters: hub_core::ParameterSchema {
+            json_schema: serde_json::json!({
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                    "url": {"type": "string", "description": "URL to inspect"},
+                    "method": {"type": "string", "description": "HTTP method", "default": "HEAD"}
+                }
+            }),
+        },
+        tags: vec!["ops".into(), "network".into()],
+        transport: hub_core::Transport::Local,
     });
 }

@@ -389,6 +389,148 @@ impl AuthStore {
             }
         }
 
+        // Linode
+        if let Ok(token) = std::env::var("LINODE_API_TOKEN") {
+            store.add(Credential {
+                provider: "linode".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.linode.com/v4".into()),
+                auth: AuthMethod::Bearer { token },
+            });
+        }
+
+        // Kimi (Moonshot)
+        if let Ok(key) =
+            std::env::var("MOONSHOT_API_KEY").or_else(|_| std::env::var("KIMI_API_KEY"))
+        {
+            let base = std::env::var("MOONSHOT_BASE_URL")
+                .unwrap_or_else(|_| "https://api.moonshot.cn/v1".into());
+            store.add(Credential {
+                provider: "kimi".into(),
+                account_id: "default".into(),
+                base_url: Some(base),
+                auth: AuthMethod::Bearer { token: key },
+            });
+        }
+
+        // Cloudflare AI
+        if let (Ok(token), Ok(account_id)) = (
+            std::env::var("CLOUDFLARE_API_TOKEN"),
+            std::env::var("CLOUDFLARE_ACCOUNT_ID"),
+        ) {
+            store.add(Credential {
+                provider: "cloudflare".into(),
+                account_id: "default".into(),
+                base_url: Some(format!(
+                    "https://api.cloudflare.com/client/v4/accounts/{account_id}"
+                )),
+                auth: AuthMethod::Bearer { token },
+            });
+        }
+
+        // OneProvider
+        if let Ok(key) = std::env::var("ONEPROVIDER_API_KEY") {
+            store.add(Credential {
+                provider: "oneprovider".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.oneprovider.com".into()),
+                auth: AuthMethod::Bearer { token: key },
+            });
+        }
+
+        // Tawk.to
+        if let Ok(key) = std::env::var("TAWK_API_KEY") {
+            store.add(Credential {
+                provider: "tawk".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.tawk.to/v1".into()),
+                auth: AuthMethod::Bearer { token: key },
+            });
+        }
+
+        // WHM
+        if let (Ok(host), Ok(user), Ok(token)) = (
+            std::env::var("WHM_HOST"),
+            std::env::var("WHM_USER"),
+            std::env::var("WHM_API_TOKEN"),
+        ) {
+            store.add(Credential {
+                provider: "whm".into(),
+                account_id: "default".into(),
+                base_url: Some(format!("https://{host}:2087")),
+                auth: AuthMethod::Header {
+                    name: "Authorization".into(),
+                    value: format!("whm {user}:{token}"),
+                },
+            });
+        }
+
+        // cPanel
+        if let (Ok(host), Ok(user), Ok(token)) = (
+            std::env::var("CPANEL_HOST"),
+            std::env::var("CPANEL_USER"),
+            std::env::var("CPANEL_API_TOKEN"),
+        ) {
+            store.add(Credential {
+                provider: "cpanel".into(),
+                account_id: "default".into(),
+                base_url: Some(format!("https://{host}:2083")),
+                auth: AuthMethod::Header {
+                    name: "Authorization".into(),
+                    value: format!("cpanel {user}:{token}"),
+                },
+            });
+        }
+
+        // WHMCS
+        if let (Ok(url), Ok(identifier), Ok(secret)) = (
+            std::env::var("WHMCS_URL"),
+            std::env::var("WHMCS_API_IDENTIFIER"),
+            std::env::var("WHMCS_API_SECRET"),
+        ) {
+            store.add(Credential {
+                provider: "whmcs".into(),
+                account_id: "default".into(),
+                base_url: Some(format!("{}/includes/api.php", url.trim_end_matches('/'))),
+                auth: AuthMethod::Basic {
+                    username: identifier,
+                    password: secret,
+                },
+            });
+        }
+
+        // UltaHost (WHMCS billing)
+        if let (Ok(url), Ok(user), Ok(key)) = (
+            std::env::var("ULTRAHOST_WHMCS_URL"),
+            std::env::var("ULTRAHOST_API_USER"),
+            std::env::var("ULTRAHOST_API_KEY"),
+        ) {
+            store.add(Credential {
+                provider: "ultrahost".into(),
+                account_id: "default".into(),
+                base_url: Some(url),
+                auth: AuthMethod::Basic {
+                    username: user,
+                    password: key,
+                },
+            });
+        }
+
+        // Claude/Anthropic auth is already registered above under "anthropic".
+        // The spec file is named "claude.json" so the provider is "claude".
+        // We need a mapping from "claude" to the anthropic credentials.
+        if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+            store.add(Credential {
+                provider: "claude".into(),
+                account_id: "default".into(),
+                base_url: Some("https://api.anthropic.com/v1".into()),
+                auth: AuthMethod::Header {
+                    name: "x-api-key".into(),
+                    value: key,
+                },
+            });
+        }
+
         // Contabo password grant
         if let (Ok(client_id), Ok(client_secret), Ok(username), Ok(password)) = (
             std::env::var("CONTABO_CLIENT_ID"),
