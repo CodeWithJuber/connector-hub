@@ -1,15 +1,25 @@
 {
   "name": "connector-hub",
-  "version": "2.1.0",
-  "tagline": "One hub for every external service — 24 providers, 301 operations, spec-driven and auditable.",
-  "tags": [
-    "connectors",
-    "api",
-    "mcp",
-    "automation",
-    "devops"
-  ],
-  "icon": "plug",
-  "homepage": "https://github.com/CodeWithJuber/connector-hub",
-  "repository": "https://github.com/CodeWithJuber/connector-hub"
+  "version": "2.2.0",
+  "description": "Spec-driven connector orchestration — 24 providers, 301 operations, type-safe execution contract with audit ledger.",
+  "owner": {
+    "name": "Connector Hub contributors",
+    "url": "https://github.com/CodeWithJuber"
+  },
+  "plugins": [
+    {
+      "name": "connector-hub",
+      "source": "./",
+      "version": "2.2.0",
+      "description": "Spec-driven connector orchestration — 24 providers, 301 operations, type-safe execution contract with audit ledger.",
+      "homepage": "https://github.com/CodeWithJuber/connector-hub",
+      "keywords": [
+        "connectors",
+        "api",
+        "mcp",
+        "automation",
+        "devops"
+      ]
+    }
+  ]
 }

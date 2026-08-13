@@ -128,6 +128,26 @@ connector-hub audit-verify audit.jsonl
 
 See `docs/adr/0004-audit-ledger-format.md` for the format specification.
 
+## Credentials
+
+Connectors read credentials from the environment. MCP hosts launch stdio
+servers with a bare environment, so `bin/connector-hub-mcp` sources
+`~/.config/connector-hub/env` (override with `CONNECTOR_HUB_ENV`) before exec.
+One file, shared by every agent on the machine:
+
+```sh
+mkdir -p ~/.config/connector-hub
+cat > ~/.config/connector-hub/env <<'EOF'
+GITHUB_TOKEN="ghp_..."
+HETZNER_API_TOKEN="..."
+EOF
+chmod 600 ~/.config/connector-hub/env
+```
+
+Leave unused variables commented out rather than set to `""` — an empty string
+reads as configured, which turns a clean `ConfigurationRequired` into a 401
+from the provider.
+
 ## Security model
 
 - Credentials live in environment variables or an encrypted store. Never in
