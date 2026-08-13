@@ -1,0 +1,37 @@
+#!/bin/sh
+# Locate and run the connector-hub binary.
+#
+# Plugin hosts (Claude Code, Codex, Kimi) install this repo by cloning it, so
+# there is no compiled binary at install time. This resolves one in the places
+# it is actually likely to be, and fails with an actionable message otherwise.
+#
+# Order: $CONNECTOR_HUB_BIN, release build, debug build, $PATH.
+ROOT="${CLAUDE_PLUGIN_ROOT:-$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)}"
+
+if [ -n "$CONNECTOR_HUB_BIN" ] && [ -x "$CONNECTOR_HUB_BIN" ]; then
+  BIN="$CONNECTOR_HUB_BIN"
+elif [ -x "$ROOT/crates/target/release/connector-hub" ]; then
+  BIN="$ROOT/crates/target/release/connector-hub"
+elif [ -x "$ROOT/crates/target/debug/connector-hub" ]; then
+  BIN="$ROOT/crates/target/debug/connector-hub"
+elif command -v connector-hub >/dev/null 2>&1; then
+  BIN="$(command -v connector-hub)"
+else
+  echo "connector-hub: no binary found." >&2
+  echo "  Build it:  cd $ROOT/crates && cargo build --release" >&2
+  echo "  Or point CONNECTOR_HUB_BIN at an existing build." >&2
+  exit 1
+fi
+
+# The catalogue is data, not code — make sure this checkout's specs are used
+# even when the binary came from somewhere else on the filesystem.
+if [ -z "$CONNECTOR_HUB_SPECS_DIR" ] && [ -d "$ROOT/specs" ]; then
+  CONNECTOR_HUB_SPECS_DIR="$ROOT/specs"
+  export CONNECTOR_HUB_SPECS_DIR
+fi
+
+if [ $# -eq 0 ]; then
+  exec "$BIN" mcp
+else
+  exec "$BIN" "$@"
+fi

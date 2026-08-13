@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "connector-hub": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/crates/target/release/connector-hub",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/connector-hub-mcp",
       "args": [
         "mcp"
       ],
