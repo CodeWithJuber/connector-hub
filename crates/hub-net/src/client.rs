@@ -65,13 +65,12 @@ impl NetClient {
 
         // For methods that take a body, send args as JSON
         match method.to_uppercase().as_str() {
-            "POST" | "PUT" | "PATCH" => {
-                if !args.is_null() {
-                    request = request
-                        .header("Content-Type", "application/json")
-                        .json(args);
-                }
+            "POST" | "PUT" | "PATCH" if !args.is_null() => {
+                request = request
+                    .header("Content-Type", "application/json")
+                    .json(args);
             }
+            "POST" | "PUT" | "PATCH" => {}
             "GET" | "HEAD" | "DELETE" => {
                 // GET/HEAD/DELETE: if args has query-like params, append as query string
                 if let Some(obj) = args.as_object() {
