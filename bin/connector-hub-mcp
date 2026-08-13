@@ -8,6 +8,17 @@
 # Order: $CONNECTOR_HUB_BIN, release build, debug build, $PATH.
 ROOT="${CLAUDE_PLUGIN_ROOT:-$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)}"
 
+# Credentials. MCP hosts launch servers with a bare environment, so provider
+# keys have to come from somewhere other than the user's shell profile. One
+# file, shared by every host on the machine, keeps a key in a single place
+# rather than duplicated across each agent's config.
+ENV_FILE="${CONNECTOR_HUB_ENV:-${XDG_CONFIG_HOME:-$HOME/.config}/connector-hub/env}"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  . "$ENV_FILE"
+  set +a
+fi
+
 if [ -n "$CONNECTOR_HUB_BIN" ] && [ -x "$CONNECTOR_HUB_BIN" ]; then
   BIN="$CONNECTOR_HUB_BIN"
 elif [ -x "$ROOT/crates/target/release/connector-hub" ]; then
