@@ -5,6 +5,27 @@ use std::time::Duration;
 use crate::NetError;
 use crate::ssrf::SsrfPolicy;
 
+/// The User-Agent every outbound request carries.
+///
+/// reqwest sends no User-Agent by default. GitHub rejects such requests
+/// outright with `403 Request forbidden by administrative rules`, and several
+/// WAF-fronted provider APIs do the same, so this is not cosmetic — without it
+/// entire providers are unreachable no matter how good the credentials are.
+const USER_AGENT: &str = concat!(
+    "connector-hub/",
+    env!("CARGO_PKG_VERSION"),
+    " (+https://github.com/CodeWithJuber/connector-hub)"
+);
+
+fn build_client(timeout_secs: u64) -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(timeout_secs))
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent(USER_AGENT)
+        .build()
+        .expect("failed to build HTTP client")
+}
+
 pub struct NetClient {
     policy: SsrfPolicy,
     timeout_secs: u64,
@@ -13,11 +34,7 @@ pub struct NetClient {
 
 impl NetClient {
     pub fn new(policy: SsrfPolicy) -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .expect("failed to build HTTP client");
+        let client = build_client(30);
 
         Self {
             policy,
@@ -28,11 +45,7 @@ impl NetClient {
 
     pub fn with_timeout(mut self, secs: u64) -> Self {
         self.timeout_secs = secs;
-        self.client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(secs))
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .expect("failed to build HTTP client");
+        self.client = build_client(secs);
         self
     }
 
