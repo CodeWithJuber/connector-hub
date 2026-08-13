@@ -1,0 +1,301 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "iHerb Impact Affiliate API",
+    "version": "1.0.0",
+    "description": "Impact affiliate network API for iHerb. Provides access to campaigns, actions (conversions), product catalogs, tracking links, and promotional codes."
+  },
+  "servers": [
+    { "url": "https://api.impact.com" }
+  ],
+  "security": [
+    { "BasicAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "HTTP Basic auth using account_sid as username and auth_token as password"
+      }
+    }
+  },
+  "paths": {
+    "/{account_sid}/Campaigns": {
+      "get": {
+        "operationId": "list_campaigns",
+        "summary": "List available campaigns",
+        "description": "Returns all campaigns available to the media partner, including iHerb affiliate programs with their status, commission rates, and terms.",
+        "tags": ["campaigns"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Active", "Inactive", "Pending"] },
+            "description": "Filter campaigns by status"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 },
+            "description": "Number of results per page"
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Page number (zero-indexed)"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/Campaigns/{campaign_id}": {
+      "get": {
+        "operationId": "get_campaign",
+        "summary": "Get campaign details",
+        "description": "Returns detailed information about a specific campaign including contract terms, commission structure, and advertiser details.",
+        "tags": ["campaigns"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Campaign ID"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/Actions": {
+      "get": {
+        "operationId": "list_actions",
+        "summary": "List conversion actions",
+        "description": "Returns tracked conversions (actions) showing sales, order values, commissions, and status for iHerb referrals.",
+        "tags": ["actions"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "StartDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Filter actions from this date (YYYY-MM-DD)"
+          },
+          {
+            "name": "EndDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Filter actions until this date (YYYY-MM-DD)"
+          },
+          {
+            "name": "CampaignId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by campaign ID"
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Approved", "Pending", "Reversed"] },
+            "description": "Filter by action status"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 },
+            "description": "Number of results per page"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/Actions/{action_id}": {
+      "get": {
+        "operationId": "get_action",
+        "summary": "Get action details",
+        "description": "Returns full details for a specific conversion action including line items, customer info, and payout details.",
+        "tags": ["actions"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Action ID"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/Catalogs": {
+      "get": {
+        "operationId": "list_catalogs",
+        "summary": "List product catalogs",
+        "description": "Returns available product catalogs from iHerb, listing catalog names, item counts, and last update timestamps.",
+        "tags": ["catalogs"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "CampaignId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter catalogs by campaign ID"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/Catalogs/{catalog_id}/Items": {
+      "get": {
+        "operationId": "get_catalog_items",
+        "summary": "Get catalog product items",
+        "description": "Returns product items from a specific catalog including product names, prices, categories, images, and affiliate links.",
+        "tags": ["catalogs"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "catalog_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Catalog ID"
+          },
+          {
+            "name": "Query",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Search query to filter products"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 },
+            "description": "Number of items per page"
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Page number (zero-indexed)"
+          }
+        ]
+      }
+    },
+    "/{account_sid}/UniqueUrls": {
+      "post": {
+        "operationId": "create_tracking_link",
+        "summary": "Generate affiliate tracking URL",
+        "description": "Creates a unique affiliate tracking URL for a specific iHerb product or page, with optional sub-tracking IDs.",
+        "tags": ["tracking"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["CampaignId", "Url"],
+                "properties": {
+                  "CampaignId": {
+                    "type": "string",
+                    "description": "Campaign ID for the tracking link"
+                  },
+                  "Url": {
+                    "type": "string",
+                    "description": "The iHerb destination URL"
+                  },
+                  "SubId1": {
+                    "type": "string",
+                    "description": "Optional sub-tracking ID 1"
+                  },
+                  "SubId2": {
+                    "type": "string",
+                    "description": "Optional sub-tracking ID 2"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{account_sid}/PromoCodes": {
+      "get": {
+        "operationId": "list_promo_codes",
+        "summary": "List promotional codes",
+        "description": "Returns available promotional codes and coupons for iHerb campaigns, including discount details and validity periods.",
+        "tags": ["promotions"],
+        "parameters": [
+          {
+            "name": "account_sid",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Your Impact account SID"
+          },
+          {
+            "name": "CampaignId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter promo codes by campaign ID"
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Active", "Expired", "Upcoming"] },
+            "description": "Filter by promo code status"
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 },
+            "description": "Number of results per page"
+          }
+        ]
+      }
+    }
+  }
+}

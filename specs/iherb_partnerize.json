@@ -1,0 +1,249 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "iHerb Partnerize Affiliate API",
+    "version": "1.0.0",
+    "description": "Partnerize affiliate network API for iHerb. Provides access to campaigns, commissions, conversions, product feeds, tracking links, click reports, and performance stats."
+  },
+  "servers": [
+    { "url": "https://api.partnerize.com/v3" }
+  ],
+  "security": [
+    { "BasicAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "HTTP Basic auth using app_key as username and user_api_key as password"
+      }
+    }
+  },
+  "paths": {
+    "/network/campaign/publisher.json": {
+      "get": {
+        "operationId": "list_campaigns",
+        "summary": "List iHerb affiliate campaigns",
+        "description": "Returns all campaigns available to the publisher, including iHerb programs with their commission structures and status.",
+        "tags": ["campaigns"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "paused", "closed"] },
+            "description": "Filter campaigns by status"
+          }
+        ]
+      }
+    },
+    "/network/campaign/publisher/{campaign_id}.json": {
+      "get": {
+        "operationId": "get_campaign",
+        "summary": "Get campaign details",
+        "description": "Returns detailed information about a specific campaign including commission tiers, terms, and tracking parameters.",
+        "tags": ["campaigns"],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Campaign ID"
+          }
+        ]
+      }
+    },
+    "/reporting/report_publisher/commission.json": {
+      "get": {
+        "operationId": "list_commissions",
+        "summary": "List commission data",
+        "description": "Returns commission reports for the publisher, showing earned commissions from iHerb conversions.",
+        "tags": ["reporting"],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report end date (YYYY-MM-DD)"
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by campaign ID"
+          }
+        ]
+      }
+    },
+    "/reporting/report_publisher/conversion.json": {
+      "get": {
+        "operationId": "list_conversions",
+        "summary": "List conversion data",
+        "description": "Returns detailed conversion reports showing individual sales, order values, and commission amounts.",
+        "tags": ["reporting"],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report end date (YYYY-MM-DD)"
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by campaign ID"
+          },
+          {
+            "name": "conversion_status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["approved", "pending", "rejected"] },
+            "description": "Filter by conversion status"
+          }
+        ]
+      }
+    },
+    "/network/campaign/{campaign_id}/product.json": {
+      "get": {
+        "operationId": "get_product_feed",
+        "summary": "Get product catalog feed",
+        "description": "Returns the product feed for a specific campaign, containing iHerb product listings with names, prices, categories, and deep link URLs.",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Campaign ID"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 },
+            "description": "Page number for paginated results"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 100 },
+            "description": "Number of products per page"
+          }
+        ]
+      }
+    },
+    "/network/campaign/{campaign_id}/tracking_link.json": {
+      "post": {
+        "operationId": "create_tracking_link",
+        "summary": "Create affiliate tracking link",
+        "description": "Generates a new affiliate tracking link (deep link) for a specific iHerb product or page URL.",
+        "tags": ["tracking"],
+        "parameters": [
+          {
+            "name": "campaign_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Campaign ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["destination_url"],
+                "properties": {
+                  "destination_url": {
+                    "type": "string",
+                    "description": "The iHerb product or page URL to create a tracking link for"
+                  },
+                  "sub_id": {
+                    "type": "string",
+                    "description": "Optional sub-tracking ID for analytics segmentation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/report_publisher/click.json": {
+      "get": {
+        "operationId": "get_click_report",
+        "summary": "Get click report",
+        "description": "Returns click tracking data showing click counts, unique clicks, and click-through rates for affiliate links.",
+        "tags": ["reporting"],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report end date (YYYY-MM-DD)"
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by campaign ID"
+          }
+        ]
+      }
+    },
+    "/reporting/report_publisher/performance.json": {
+      "get": {
+        "operationId": "get_performance",
+        "summary": "Get performance summary",
+        "description": "Returns aggregated performance metrics including clicks, conversions, revenue, and commission totals.",
+        "tags": ["reporting"],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Report end date (YYYY-MM-DD)"
+          },
+          {
+            "name": "campaign_id",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by campaign ID"
+          },
+          {
+            "name": "group_by",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["day", "week", "month"] },
+            "description": "Group results by time period"
+          }
+        ]
+      }
+    }
+  }
+}
