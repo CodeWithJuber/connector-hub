@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "connector-hub": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/crates/target/release/connector-hub",
+      "args": [
+        "mcp"
+      ],
+      "env": {
+        "CONNECTOR_HUB_SPECS_DIR": "${CLAUDE_PLUGIN_ROOT}/specs"
+      }
+    }
+  }
+}

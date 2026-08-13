@@ -1,7 +1,7 @@
 {
   "name": "connector-hub",
-  "version": "2.0.0",
-  "description": "Spec-driven connector orchestration — 21 providers, 278 operations, type-safe execution contract with audit ledger.",
+  "version": "2.1.0",
+  "description": "Spec-driven connector orchestration — 24 providers, 301 operations, type-safe execution contract with audit ledger.",
   "author": {
     "name": "Connector Hub contributors",
     "url": "https://github.com/CodeWithJuber"

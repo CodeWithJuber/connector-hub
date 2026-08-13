@@ -60,6 +60,18 @@ connector-hub mcp
 connector-hub validate
 ```
 
+### Specs resolution
+
+Provider specs are located in this order:
+
+1. `CONNECTOR_HUB_SPECS_DIR` — explicit override.
+2. `./specs` relative to the working directory.
+3. `specs/` found by walking up from the executable.
+
+Rule 3 lets an installed binary find its specs without the caller setting a
+working directory — MCP hosts launch servers with an arbitrary cwd, so a hub
+installed globally would otherwise start with an empty catalogue.
+
 ## Architecture
 
 Connectors are **data, not code**. Provider specs (OpenAPI 3.x or Google

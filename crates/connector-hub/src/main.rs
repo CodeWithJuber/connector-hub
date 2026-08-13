@@ -109,12 +109,15 @@ async fn main() -> anyhow::Result<()> {
             println!("Validating installation...\n");
 
             // 1. Check specs directory
-            let specs_dir = std::path::Path::new("specs");
-            if !specs_dir.exists() {
-                errors.push("specs/ directory not found".into());
+            let specs_dir = specs_dir();
+            if !specs_dir.is_dir() {
+                errors.push(format!(
+                    "specs/ directory not found at {}",
+                    specs_dir.display()
+                ));
             } else {
                 let mut spec_count = 0;
-                for entry in std::fs::read_dir(specs_dir)? {
+                for entry in std::fs::read_dir(&specs_dir)? {
                     let entry = entry?;
                     let path = entry.path();
                     if path.extension().is_some_and(|e| e == "json") {
@@ -259,11 +262,46 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Resolve the provider specs directory.
+///
+/// Resolution order:
+/// 1. `CONNECTOR_HUB_SPECS_DIR` — explicit override.
+/// 2. `./specs` relative to the working directory — repo-root invocation.
+/// 3. `specs/` found by walking up from the executable — lets an installed
+///    binary (e.g. `crates/target/release/connector-hub`) locate the specs
+///    without the caller having to set a working directory. MCP hosts launch
+///    servers with an arbitrary cwd, so this is the common case.
+///
+/// Falls back to `./specs` so callers keep a stable "not found" path to report.
+fn specs_dir() -> std::path::PathBuf {
+    if let Ok(dir) = std::env::var("CONNECTOR_HUB_SPECS_DIR") {
+        return std::path::PathBuf::from(dir);
+    }
+
+    let cwd_specs = std::path::PathBuf::from("specs");
+    if cwd_specs.is_dir() {
+        return cwd_specs;
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let mut ancestor = exe.parent();
+        while let Some(dir) = ancestor {
+            let candidate = dir.join("specs");
+            if candidate.is_dir() {
+                return candidate;
+            }
+            ancestor = dir.parent();
+        }
+    }
+
+    cwd_specs
+}
+
 fn build_catalogue() -> anyhow::Result<hub_core::Catalogue> {
     let mut catalogue = hub_core::Catalogue::new();
 
-    let specs_dir = std::path::Path::new("specs");
-    if specs_dir.exists() {
+    let specs_dir = specs_dir();
+    if specs_dir.is_dir() {
         for entry in std::fs::read_dir(specs_dir)? {
             let entry = entry?;
             let path = entry.path();
