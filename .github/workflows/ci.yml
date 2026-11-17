@@ -23,9 +23,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6  # v2
-        with:
-          workspaces: crates
       - name: Check formatting
         run: cargo fmt --check
         working-directory: crates
@@ -96,9 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6  # v2
-        with:
-          workspaces: crates
       - name: Run opt-in integrations
         run: cargo test --workspace -- --ignored
         working-directory: crates
